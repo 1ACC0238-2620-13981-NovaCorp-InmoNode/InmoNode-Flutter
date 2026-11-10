@@ -1,6 +1,6 @@
 {
-    "name": "inmonode",
-    "short_name": "inmonode",
+    "name": "InmoNode",
+    "short_name": "InmoNode",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",
