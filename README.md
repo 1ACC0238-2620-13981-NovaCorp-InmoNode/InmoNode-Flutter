@@ -78,7 +78,7 @@ features/catalog/
 | `vouchers` | Gestión de Comprobantes | US-20 Adjuntar comprobante, US-25 Historial de recibos validados | 3, 4 | `POST /vouchers/upload-url`, `POST /vouchers`, `GET /vouchers`, `GET /reservations/{id}/payment-evidences` |
 | `contracts` | Control Financiero y Documental | US-21 Consultar contratos, US-22 Registrar conformidad, US-28 Co-propietario | 3, 4 | `GET /reservations/{id}/contract`, `POST /contracts/{contractId}/acknowledgment`, `POST /reservations/{id}/co-owner` |
 | `account_statement` | Control Financiero y Documental | US-23 Estado de cuenta, US-24 Alertas de cuotas, US-26 Certificado de no adeudo | 4 | `GET /account-statements`, `GET /reservations/{id}/account-statement` |
-| `dashboard` | Control Financiero y Documental | US-27 Consolidación de activos | 4 | `GET /buyers/me/portfolio-summary` |
+| `dashboard` | Control Financiero y Documental | US-27 Consolidación de activos | 4 | `GET /account-statements` |
 
 ### Back-office
 
