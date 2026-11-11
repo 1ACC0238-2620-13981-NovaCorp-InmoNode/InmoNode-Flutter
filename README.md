@@ -14,11 +14,13 @@ La operación del Agente Comercial de Campo (EP-01 y EP-02) se desarrolla en la 
 
 ```bash
 flutter pub get
-flutter run -d chrome     # Web
-flutter run               # Dispositivo o emulador Android
+flutter run -d chrome --web-port 5173   # Web
+flutter run                             # Dispositivo o emulador Android
 flutter analyze
 flutter test
 ```
+
+En Web se usa el puerto 5173 porque el enlace del correo de verificación apunta a `http://localhost:5173/verify-email` en desarrollo (`VERIFICATION_URL` del backend).
 
 ## Arquitectura
 
@@ -33,13 +35,15 @@ Cada bounded context presente en la aplicación se organiza como un feature dent
 
 Las dependencias se registran en `lib/core/di/dependency_injection.dart` con `get_it`. Cada feature agrega sus registros en `setupDependencies()`.
 
+Los endpoints protegidos se consumen con `getIt<AuthorizedClient>()` (`lib/core/network/authorized_client.dart`). Este cliente envía el JWT de la sesión, pide los mensajes de error en español y, si recibe un 401, renueva la sesión y repite la solicitud. Los errores de los Web Services llegan como `ApiException`, con el `code` y el `message` del backend.
+
 ```
 lib/
 ├── main.dart
 ├── core/
 │   ├── theme.dart                      # Paleta y tema InmoNode
 │   ├── di/dependency_injection.dart    # Registro de dependencias (get_it)
-│   ├── network/api_constants.dart      # URL base del backend
+│   ├── network/                        # URL base, ApiException y AuthorizedClient
 │   └── widgets/                        # Componentes compartidos
 └── features/
     ├── iam/                            # Cuenta, sesión y roles
