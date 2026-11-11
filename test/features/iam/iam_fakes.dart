@@ -37,12 +37,15 @@ class FakeAuthRepository implements AuthRepository {
   Future<Session> Function(String email, String password)? onSignIn;
   Future<Session> Function(String refreshToken)? onRefresh;
   Future<void> Function(String refreshToken)? onSignOut;
+  Future<void> Function(String email)? onRequestPasswordReset;
+  Future<void> Function(String token, String newPassword)? onResetPassword;
 
   final List<String> registeredEmails = [];
   final List<String> signedInEmails = [];
   final List<String> resentTo = [];
   final List<String> refreshedTokens = [];
   final List<String> signedOutTokens = [];
+  final List<String> passwordResetsRequested = [];
 
   @override
   Future<Account> register(String email, String password) {
@@ -72,6 +75,17 @@ class FakeAuthRepository implements AuthRepository {
   Future<void> signOut(String refreshToken) async {
     signedOutTokens.add(refreshToken);
     await onSignOut?.call(refreshToken);
+  }
+
+  @override
+  Future<void> requestPasswordReset(String email) async {
+    passwordResetsRequested.add(email);
+    await onRequestPasswordReset?.call(email);
+  }
+
+  @override
+  Future<void> resetPassword(String token, String newPassword) {
+    return onResetPassword!(token, newPassword);
   }
 }
 

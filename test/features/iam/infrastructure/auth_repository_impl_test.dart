@@ -110,6 +110,45 @@ void main() {
     );
   });
 
+  test('requests the password reset link for an email', () async {
+    final repository = repositoryAnswering((_) => http.Response('', 204));
+
+    await repository.requestPasswordReset('ana@mail.com');
+
+    final request = requests.single;
+    expect(request.url.toString(), '${ApiConstants.baseUrl}/auth/forgot-password');
+    expect(jsonDecode(request.body), {'email': 'ana@mail.com'});
+  });
+
+  test('sends the new password with the token of the reset link', () async {
+    final repository = repositoryAnswering((_) => http.Response('', 204));
+
+    await repository.resetPassword('reset-123', 'newSecret123');
+
+    final request = requests.single;
+    expect(request.url.toString(), '${ApiConstants.baseUrl}/auth/reset-password');
+    expect(jsonDecode(request.body), {'token': 'reset-123', 'newPassword': 'newSecret123'});
+  });
+
+  test('rejects an expired or already used reset link', () async {
+    final repository = repositoryAnswering(
+      (_) => jsonResponse({
+        'code': 'INVALID_RESET_TOKEN',
+        'message': 'El enlace para restablecer la contraseña no es válido, venció o ya se usó; pide uno nuevo',
+      }, 400),
+    );
+
+    await expectLater(
+      repository.resetPassword('reset-123', 'newSecret123'),
+      throwsA(
+        isA<ApiException>()
+            .having((e) => e.statusCode, 'statusCode', 400)
+            .having((e) => e.code, 'code', 'INVALID_RESET_TOKEN')
+            .having((e) => e.message, 'message', contains('pide uno nuevo')),
+      ),
+    );
+  });
+
   test('reports a connection failure as a network error', () async {
     final repository = AuthRepositoryImpl(
       api: AuthApi(client: MockClient((_) async => throw http.ClientException('offline'))),

@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:inmonode/core/di/dependency_injection.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
+import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
 import 'package:inmonode/features/iam/application/restore_session_use_case.dart';
 import 'package:inmonode/features/iam/application/sign_in_use_case.dart';
 import 'package:inmonode/features/iam/application/sign_out_use_case.dart';
+import 'package:inmonode/features/iam/presentation/forgot_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/login_page.dart';
 import 'package:inmonode/features/iam/presentation/login_view_model.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
@@ -27,7 +30,14 @@ void main() {
         endSession: SignOutUseCase(authRepository: auth, sessionRepository: sessions),
       ),
     );
+    getIt.registerFactory<ForgotPasswordViewModel>(
+      () => ForgotPasswordViewModel(
+        requestPasswordReset: RequestPasswordResetUseCase(repository: auth),
+      ),
+    );
   });
+
+  tearDown(() => getIt.reset());
 
   Future<void> pumpLoginPage(WidgetTester tester) {
     return tester.pumpWidget(MaterialApp(home: LoginPage(viewModel: viewModel)));
@@ -59,5 +69,23 @@ void main() {
 
     expect(find.text('Cuenta no activa: verifica tu correo antes de iniciar sesión'), findsOneWidget);
     expect(find.text('Reenviar enlace de verificación'), findsOneWidget);
+  });
+
+  testWidgets('sends the password reset link to the email typed on sign-in', (tester) async {
+    await pumpLoginPage(tester);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Correo electrónico'), 'ana@mail.com');
+    await tester.tap(find.text('¿Olvidaste tu contraseña?'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recuperar contraseña'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'ana@mail.com'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(FilledButton, 'Enviar enlace'));
+    await tester.pump();
+
+    expect(auth.passwordResetsRequested, ['ana@mail.com']);
+    expect(find.text('Revisa tu correo'), findsOneWidget);
+    expect(find.text('Reenviar enlace en 60 s'), findsOneWidget);
   });
 }

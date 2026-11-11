@@ -2,13 +2,17 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:inmonode/core/network/api_exception.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
 import 'package:inmonode/features/iam/application/register_account_use_case.dart';
+import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
+import 'package:inmonode/features/iam/application/reset_password_use_case.dart';
 import 'package:inmonode/features/iam/application/restore_session_use_case.dart';
 import 'package:inmonode/features/iam/application/sign_in_use_case.dart';
 import 'package:inmonode/features/iam/application/sign_out_use_case.dart';
 import 'package:inmonode/features/iam/application/verify_email_use_case.dart';
 import 'package:inmonode/features/iam/domain/account.dart';
+import 'package:inmonode/features/iam/presentation/forgot_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/login_view_model.dart';
 import 'package:inmonode/features/iam/presentation/register_view_model.dart';
+import 'package:inmonode/features/iam/presentation/reset_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
 import 'package:inmonode/features/iam/presentation/verify_email_view_model.dart';
 
@@ -146,6 +150,88 @@ void main() {
       await viewModel.verify('token-123');
 
       expect(viewModel.canRetry, isTrue);
+    });
+  });
+
+  group('ForgotPasswordViewModel', () {
+    late ForgotPasswordViewModel viewModel;
+
+    setUp(() {
+      viewModel = ForgotPasswordViewModel(
+        requestPasswordReset: RequestPasswordResetUseCase(repository: auth),
+      );
+      addTearDown(viewModel.dispose);
+    });
+
+    test('sends the link and waits before sending another one', () async {
+      await viewModel.send('ana@mail.com');
+
+      expect(viewModel.sentTo, 'ana@mail.com');
+      expect(viewModel.secondsLeft, ForgotPasswordViewModel.cooldownSeconds);
+      expect(viewModel.canResend, isFalse);
+
+      await viewModel.resend();
+
+      expect(auth.passwordResetsRequested, ['ana@mail.com']);
+    });
+
+    test('keeps the form and shows the error when the server cannot be reached', () async {
+      auth.onRequestPasswordReset = (_) async => throw const ApiException.network();
+
+      await viewModel.send('ana@mail.com');
+
+      expect(viewModel.sentTo, isNull);
+      expect(viewModel.errorMessage, contains('No se pudo conectar'));
+    });
+
+    test('goes back to the form to use another email', () async {
+      await viewModel.send('ana@mial.com');
+
+      viewModel.changeEmail();
+
+      expect(viewModel.sentTo, isNull);
+      expect(viewModel.secondsLeft, 0);
+    });
+  });
+
+  group('ResetPasswordViewModel', () {
+    late ResetPasswordViewModel viewModel;
+
+    setUp(() {
+      viewModel = ResetPasswordViewModel(resetPassword: ResetPasswordUseCase(repository: auth));
+    });
+
+    test('changes the password with the token of the link', () async {
+      final received = <String>[];
+      auth.onResetPassword = (token, newPassword) async => received.addAll([token, newPassword]);
+
+      await viewModel.submit('reset-123', 'newSecret123');
+
+      expect(viewModel.status, PasswordResetStatus.done);
+      expect(received, ['reset-123', 'newSecret123']);
+    });
+
+    test('asks for a new link when the link expired or was already used', () async {
+      auth.onResetPassword = (_, _) async => throw apiError(
+        400,
+        'INVALID_RESET_TOKEN',
+        'El enlace para restablecer la contraseña no es válido, venció o ya se usó; pide uno nuevo',
+      );
+
+      await viewModel.submit('reset-123', 'newSecret123');
+
+      expect(viewModel.status, PasswordResetStatus.linkInvalid);
+      expect(viewModel.errorMessage, contains('pide uno nuevo'));
+    });
+
+    test('keeps the form when the server cannot be reached', () async {
+      auth.onResetPassword = (_, _) async => throw const ApiException.network();
+
+      await viewModel.submit('reset-123', 'newSecret123');
+
+      expect(viewModel.status, PasswordResetStatus.editing);
+      expect(viewModel.errorMessage, contains('No se pudo conectar'));
+      expect(viewModel.isLoading, isFalse);
     });
   });
 
