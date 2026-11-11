@@ -14,11 +14,13 @@ La operación del Agente Comercial de Campo (EP-01 y EP-02) se desarrolla en la 
 
 ```bash
 flutter pub get
-flutter run -d chrome     # Web
-flutter run               # Dispositivo o emulador Android
+flutter run -d chrome --web-port 5173   # Web
+flutter run                             # Dispositivo o emulador Android
 flutter analyze
 flutter test
 ```
+
+En Web se usa el puerto 5173 porque, en desarrollo, los enlaces de los correos apuntan a esta app: el de verificación a `http://localhost:5173/verify-email` (`VERIFICATION_URL` del backend) y el de recuperación de contraseña a `http://localhost:5173/reset-password` (`PASSWORD_RESET_URL`).
 
 ## Arquitectura
 
@@ -33,13 +35,15 @@ Cada bounded context presente en la aplicación se organiza como un feature dent
 
 Las dependencias se registran en `lib/core/di/dependency_injection.dart` con `get_it`. Cada feature agrega sus registros en `setupDependencies()`.
 
+Los endpoints protegidos se consumen con `getIt<AuthorizedClient>()` (`lib/core/network/authorized_client.dart`). Este cliente envía el JWT de la sesión, pide los mensajes de error en español y, si recibe un 401, renueva la sesión y repite la solicitud. Los errores de los Web Services llegan como `ApiException`, con el `code` y el `message` del backend.
+
 ```
 lib/
 ├── main.dart
 ├── core/
 │   ├── theme.dart                      # Paleta y tema InmoNode
 │   ├── di/dependency_injection.dart    # Registro de dependencias (get_it)
-│   ├── network/api_constants.dart      # URL base del backend
+│   ├── network/                        # URL base, ApiException y AuthorizedClient
 │   └── widgets/                        # Componentes compartidos
 └── features/
     ├── iam/                            # Cuenta, sesión y roles
@@ -97,7 +101,7 @@ Dependencias entre historias:
 
 | Feature | Bounded Context | User Stories | Entrega | Endpoints principales |
 |---|---|---|---|---|
-| `iam` | Identidad y Acceso | US-14 Crear cuenta | Sprint 2 | `POST /auth/register`, `/auth/verify-email`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
+| `iam` | Identidad y Acceso | US-14 Crear cuenta | Sprint 2 | `POST /auth/register`, `/auth/verify-email`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password` |
 | `catalog` | Catálogo Inmobiliario | US-15 Explorar proyectos, US-16 Filtrar lotes en mapa | Sprint 2 (US-15), Release 2 (US-16) | `GET /projects`, `/projects/{projectId}`, `/projects/{projectId}/lots` |
 | `quotations` | Cotización y Separación Digital | US-17 Simular financiamiento, US-18 Descargar cotización | Sprint 2 (US-17), Release 2 (US-18) | `POST /lots/{lotId}/quotations`, `GET /quotations/{quotationId}`, `/quotations/{quotationId}/download` |
 | `separations` | Cotización y Separación Digital | US-19 Solicitar separación web | Release 2 | `POST /lots/{lotId}/separation-requests` |
