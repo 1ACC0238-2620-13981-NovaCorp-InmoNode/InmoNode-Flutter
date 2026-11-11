@@ -20,7 +20,7 @@ flutter analyze
 flutter test
 ```
 
-En Web se usa el puerto 5173 porque el enlace del correo de verificación apunta a `http://localhost:5173/verify-email` en desarrollo (`VERIFICATION_URL` del backend).
+En Web se usa el puerto 5173 porque, en desarrollo, los enlaces de los correos apuntan a esta app: el de verificación a `http://localhost:5173/verify-email` (`VERIFICATION_URL` del backend) y el de recuperación de contraseña a `http://localhost:5173/reset-password` (`PASSWORD_RESET_URL`).
 
 ## Arquitectura
 
@@ -101,7 +101,7 @@ Dependencias entre historias:
 
 | Feature | Bounded Context | User Stories | Entrega | Endpoints principales |
 |---|---|---|---|---|
-| `iam` | Identidad y Acceso | US-14 Crear cuenta | Sprint 2 | `POST /auth/register`, `/auth/verify-email`, `/auth/login`, `/auth/refresh`, `/auth/logout` |
+| `iam` | Identidad y Acceso | US-14 Crear cuenta | Sprint 2 | `POST /auth/register`, `/auth/verify-email`, `/auth/login`, `/auth/refresh`, `/auth/logout`, `/auth/forgot-password`, `/auth/reset-password` |
 | `catalog` | Catálogo Inmobiliario | US-15 Explorar proyectos, US-16 Filtrar lotes en mapa | Sprint 2 (US-15), Release 2 (US-16) | `GET /projects`, `/projects/{projectId}`, `/projects/{projectId}/lots` |
 | `quotations` | Cotización y Separación Digital | US-17 Simular financiamiento, US-18 Descargar cotización | Sprint 2 (US-17), Release 2 (US-18) | `POST /lots/{lotId}/quotations`, `GET /quotations/{quotationId}`, `/quotations/{quotationId}/download` |
 | `separations` | Cotización y Separación Digital | US-19 Solicitar separación web | Release 2 | `POST /lots/{lotId}/separation-requests` |
