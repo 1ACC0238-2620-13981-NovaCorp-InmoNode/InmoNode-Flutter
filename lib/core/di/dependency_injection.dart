@@ -2,6 +2,13 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:get_it/get_it.dart';
 import 'package:inmonode/core/network/authorized_client.dart';
 import 'package:inmonode/core/network/token_provider.dart';
+import 'package:inmonode/features/catalog/application/get_project_detail_use_case.dart';
+import 'package:inmonode/features/catalog/application/get_published_projects_use_case.dart';
+import 'package:inmonode/features/catalog/domain/project_repository.dart';
+import 'package:inmonode/features/catalog/infrastructure/project_repository_impl.dart';
+import 'package:inmonode/features/catalog/infrastructure/remote/project_api.dart';
+import 'package:inmonode/features/catalog/presentation/project_detail_view_model.dart';
+import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
 import 'package:inmonode/features/iam/application/register_account_use_case.dart';
 import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
@@ -30,6 +37,27 @@ final getIt = GetIt.instance;
 void setupDependencies() {
   _setupIam();
   _setupNetwork();
+  _setupCatalog();
+}
+
+void _setupCatalog() {
+  getIt.registerLazySingleton<ProjectApi>(() => ProjectApi());
+  getIt.registerLazySingleton<ProjectRepository>(
+    () => ProjectRepositoryImpl(api: getIt<ProjectApi>()),
+  );
+  getIt.registerLazySingleton<GetPublishedProjectsUseCase>(
+    () => GetPublishedProjectsUseCase(repository: getIt<ProjectRepository>()),
+  );
+  getIt.registerLazySingleton<GetProjectDetailUseCase>(
+    () => GetProjectDetailUseCase(repository: getIt<ProjectRepository>()),
+  );
+  // A navigation section, not a pushed page: it keeps its catalog while the user switches sections.
+  getIt.registerLazySingleton<ProjectsViewModel>(
+    () => ProjectsViewModel(getPublishedProjects: getIt<GetPublishedProjectsUseCase>()),
+  );
+  getIt.registerFactory<ProjectDetailViewModel>(
+    () => ProjectDetailViewModel(getProjectDetail: getIt<GetProjectDetailUseCase>()),
+  );
 }
 
 /// Protected endpoints use `getIt<AuthorizedClient>()`, which sends the session's access token.

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:inmonode/core/di/dependency_injection.dart';
 import 'package:inmonode/core/widgets/section_placeholder.dart';
+import 'package:inmonode/features/catalog/presentation/projects_page.dart';
+import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
 import 'package:inmonode/features/iam/domain/user_role.dart';
 import 'package:inmonode/features/iam/presentation/profile_page.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
@@ -33,11 +36,7 @@ class RoleHomePage extends StatelessWidget {
             label: 'Proyectos',
             icon: Icons.apartment_outlined,
             selectedIcon: Icons.apartment,
-            builder: (_) => const SectionPlaceholder(
-              title: 'Proyectos',
-              icon: Icons.apartment,
-              message: 'El catálogo de proyectos estará disponible pronto (US-15).',
-            ),
+            builder: (_) => ProjectsPage(viewModel: getIt<ProjectsViewModel>()),
           ),
           ShellSection(
             label: 'Simulador',

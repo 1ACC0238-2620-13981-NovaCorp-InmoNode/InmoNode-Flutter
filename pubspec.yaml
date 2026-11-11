@@ -38,6 +38,7 @@ dependencies:
   flutter_secure_storage: ^11.2.0
   flutter_web_plugins:
     sdk: flutter
+  intl: ^0.20.3
 
 dev_dependencies:
   flutter_test:
