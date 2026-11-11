@@ -115,6 +115,29 @@ void main() {
 
       expect(viewModel.accountInactive, isFalse);
       expect(viewModel.errorMessage, 'Correo o contraseña inválidos');
+      expect(viewModel.suggestPasswordReset, isTrue);
+      expect(viewModel.accountLocked, isFalse);
+    });
+
+    test('offers a password reset to unlock an account locked by failed sign-ins', () async {
+      auth.onSignIn = (_, _) async => throw apiError(
+        423,
+        'ACCOUNT_LOCKED',
+        'Cuenta bloqueada temporalmente por demasiados intentos fallidos; inténtalo de nuevo más tarde',
+      );
+
+      await viewModel.submit('ana@mail.com', 'wrong-pass');
+
+      expect(viewModel.accountLocked, isTrue);
+      expect(viewModel.suggestPasswordReset, isTrue);
+    });
+
+    test('does not suggest a password reset when the server cannot be reached', () async {
+      auth.onSignIn = (_, _) async => throw const ApiException.network();
+
+      await viewModel.submit('ana@mail.com', 'secret123');
+
+      expect(viewModel.suggestPasswordReset, isFalse);
     });
   });
 

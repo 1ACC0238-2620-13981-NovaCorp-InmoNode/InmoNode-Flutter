@@ -94,17 +94,31 @@ class _LoginPageState extends State<LoginPage> {
                     validator: AuthValidators.password,
                     onFieldSubmitted: (_) => _submit(),
                   ),
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: viewModel.isLoading ? null : _openPasswordRecovery,
-                      child: const Text('¿Olvidaste tu contraseña?'),
+                  // After a failed sign-in the recovery moves next to the error.
+                  if (!viewModel.suggestPasswordReset)
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: TextButton(
+                        onPressed: viewModel.isLoading ? null : _openPasswordRecovery,
+                        child: const Text('¿Olvidaste tu contraseña?'),
+                      ),
                     ),
-                  ),
                   if (viewModel.errorMessage != null) ...[
                     const SizedBox(height: 16),
                     MessageBanner.error(viewModel.errorMessage!),
                   ],
+                  if (viewModel.suggestPasswordReset)
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: TextButton(
+                        onPressed: viewModel.isLoading ? null : _openPasswordRecovery,
+                        child: Text(
+                          viewModel.accountLocked
+                              ? 'Restablecer contraseña y desbloquear la cuenta'
+                              : '¿Olvidaste tu contraseña? Restablécela',
+                        ),
+                      ),
+                    ),
                   if (viewModel.accountInactive)
                     Align(
                       alignment: Alignment.centerLeft,

@@ -71,6 +71,26 @@ void main() {
     expect(find.text('Reenviar enlace de verificación'), findsOneWidget);
   });
 
+  testWidgets('offers the password recovery next to the error of a failed sign-in', (tester) async {
+    auth.onSignIn = (_, _) async => throw apiError(401, 'INVALID_CREDENTIALS', 'Correo o contraseña inválidos');
+    await pumpLoginPage(tester);
+    expect(find.text('¿Olvidaste tu contraseña?'), findsOneWidget);
+
+    await tester.enterText(find.widgetWithText(TextFormField, 'Correo electrónico'), 'ana@mail.com');
+    await tester.enterText(find.widgetWithText(TextFormField, 'Contraseña'), 'wrong-pass');
+    await tester.tap(find.widgetWithText(FilledButton, 'Iniciar sesión'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Correo o contraseña inválidos'), findsOneWidget);
+    expect(find.text('¿Olvidaste tu contraseña?'), findsNothing);
+
+    await tester.tap(find.text('¿Olvidaste tu contraseña? Restablécela'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Recuperar contraseña'), findsOneWidget);
+    expect(find.widgetWithText(TextFormField, 'ana@mail.com'), findsOneWidget);
+  });
+
   testWidgets('sends the password reset link to the email typed on sign-in', (tester) async {
     await pumpLoginPage(tester);
 
