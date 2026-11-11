@@ -3,6 +3,7 @@ import 'package:inmonode/core/widgets/loading_button.dart';
 import 'package:inmonode/core/widgets/message_banner.dart';
 import 'package:inmonode/features/iam/presentation/auth_scaffold.dart';
 import 'package:inmonode/features/iam/presentation/auth_validators.dart';
+import 'package:inmonode/features/iam/presentation/forgot_password_page.dart';
 import 'package:inmonode/features/iam/presentation/register_view_model.dart';
 import 'package:inmonode/features/iam/presentation/verification_sent_page.dart';
 
@@ -38,22 +39,8 @@ class _RegisterPageState extends State<RegisterPage> {
     Navigator.of(context).pushReplacement(VerificationSentPage.route(account.email));
   }
 
-  void _showPasswordRecovery() {
-    showDialog<void>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Recuperar contraseña'),
-        content: const Text(
-          'La recuperación de contraseña estará disponible en una próxima versión de inmoNode.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Entendido'),
-          ),
-        ],
-      ),
-    );
+  void _openPasswordRecovery() {
+    Navigator.of(context).push(ForgotPasswordPage.route(email: _emailController.text.trim()));
   }
 
   @override
@@ -129,7 +116,7 @@ class _RegisterPageState extends State<RegisterPage> {
                           child: const Text('Iniciar sesión'),
                         ),
                         TextButton(
-                          onPressed: _showPasswordRecovery,
+                          onPressed: _openPasswordRecovery,
                           child: const Text('¿Olvidaste tu contraseña?'),
                         ),
                       ],

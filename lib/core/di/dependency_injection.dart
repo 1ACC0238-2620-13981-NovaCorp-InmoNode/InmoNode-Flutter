@@ -4,7 +4,9 @@ import 'package:inmonode/core/network/authorized_client.dart';
 import 'package:inmonode/core/network/token_provider.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
 import 'package:inmonode/features/iam/application/register_account_use_case.dart';
+import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
 import 'package:inmonode/features/iam/application/resend_verification_use_case.dart';
+import 'package:inmonode/features/iam/application/reset_password_use_case.dart';
 import 'package:inmonode/features/iam/application/restore_session_use_case.dart';
 import 'package:inmonode/features/iam/application/session_token_provider.dart';
 import 'package:inmonode/features/iam/application/sign_in_use_case.dart';
@@ -15,9 +17,11 @@ import 'package:inmonode/features/iam/domain/session_repository.dart';
 import 'package:inmonode/features/iam/infrastructure/auth_repository_impl.dart';
 import 'package:inmonode/features/iam/infrastructure/remote/auth_api.dart';
 import 'package:inmonode/features/iam/infrastructure/session_repository_impl.dart';
+import 'package:inmonode/features/iam/presentation/forgot_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/login_view_model.dart';
 import 'package:inmonode/features/iam/presentation/register_view_model.dart';
 import 'package:inmonode/features/iam/presentation/resend_verification_view_model.dart';
+import 'package:inmonode/features/iam/presentation/reset_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
 import 'package:inmonode/features/iam/presentation/verify_email_view_model.dart';
 
@@ -59,6 +63,12 @@ void _setupIam() {
   );
   getIt.registerLazySingleton<ResendVerificationUseCase>(
     () => ResendVerificationUseCase(repository: getIt<AuthRepository>()),
+  );
+  getIt.registerLazySingleton<RequestPasswordResetUseCase>(
+    () => RequestPasswordResetUseCase(repository: getIt<AuthRepository>()),
+  );
+  getIt.registerLazySingleton<ResetPasswordUseCase>(
+    () => ResetPasswordUseCase(repository: getIt<AuthRepository>()),
   );
   getIt.registerLazySingleton<SignInUseCase>(
     () => SignInUseCase(
@@ -108,5 +118,13 @@ void _setupIam() {
   );
   getIt.registerFactory<VerifyEmailViewModel>(
     () => VerifyEmailViewModel(verifyEmail: getIt<VerifyEmailUseCase>()),
+  );
+  getIt.registerFactory<ForgotPasswordViewModel>(
+    () => ForgotPasswordViewModel(
+      requestPasswordReset: getIt<RequestPasswordResetUseCase>(),
+    ),
+  );
+  getIt.registerFactory<ResetPasswordViewModel>(
+    () => ResetPasswordViewModel(resetPassword: getIt<ResetPasswordUseCase>()),
   );
 }

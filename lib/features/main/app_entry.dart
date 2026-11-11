@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
 import 'package:inmonode/core/di/dependency_injection.dart';
+import 'package:inmonode/features/iam/presentation/email_link.dart';
 import 'package:inmonode/features/iam/presentation/login_page.dart';
 import 'package:inmonode/features/iam/presentation/login_view_model.dart';
+import 'package:inmonode/features/iam/presentation/reset_password_page.dart';
+import 'package:inmonode/features/iam/presentation/reset_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
 import 'package:inmonode/features/iam/presentation/verify_email_page.dart';
 import 'package:inmonode/features/iam/presentation/verify_email_view_model.dart';
 import 'package:inmonode/features/main/role_home_page.dart';
 
-/// Root of the app: email verification, sign-in or the navigation of the signed-in role.
+/// Root of the app: an emailed link, sign-in or the navigation of the signed-in role.
 class AppEntry extends StatefulWidget {
   final SessionViewModel sessionViewModel;
 
-  /// Token of the verification link the app was opened with (Web), if any.
-  final String? verificationToken;
+  /// The emailed link the app was opened with (Web), if any.
+  final EmailLink? emailLink;
 
   const AppEntry({
     super.key,
     required this.sessionViewModel,
-    this.verificationToken,
+    this.emailLink,
   });
 
   @override
@@ -27,13 +30,14 @@ class AppEntry extends StatefulWidget {
 class _AppEntryState extends State<AppEntry> {
   late final LoginViewModel _loginViewModel = getIt<LoginViewModel>();
   late final VerifyEmailViewModel _verifyEmailViewModel = getIt<VerifyEmailViewModel>();
-  String? _verificationToken;
+  late final ResetPasswordViewModel _resetPasswordViewModel = getIt<ResetPasswordViewModel>();
+  EmailLink? _emailLink;
   late SessionStatus _lastStatus;
 
   @override
   void initState() {
     super.initState();
-    _verificationToken = widget.verificationToken;
+    _emailLink = widget.emailLink;
     _lastStatus = widget.sessionViewModel.status;
     widget.sessionViewModel.addListener(_onSessionChanged);
     widget.sessionViewModel.restore();
@@ -56,13 +60,21 @@ class _AppEntryState extends State<AppEntry> {
 
   @override
   Widget build(BuildContext context) {
-    final token = _verificationToken;
-    if (token != null) {
-      return VerifyEmailPage(
-        token: token,
-        viewModel: _verifyEmailViewModel,
-        onContinue: () => setState(() => _verificationToken = null),
-      );
+    final link = _emailLink;
+    if (link != null) {
+      void leaveLink() => setState(() => _emailLink = null);
+      return switch (link.type) {
+        EmailLinkType.verifyEmail => VerifyEmailPage(
+          token: link.token,
+          viewModel: _verifyEmailViewModel,
+          onContinue: leaveLink,
+        ),
+        EmailLinkType.resetPassword => ResetPasswordPage(
+          token: link.token,
+          viewModel: _resetPasswordViewModel,
+          onContinue: leaveLink,
+        ),
+      };
     }
 
     return ListenableBuilder(

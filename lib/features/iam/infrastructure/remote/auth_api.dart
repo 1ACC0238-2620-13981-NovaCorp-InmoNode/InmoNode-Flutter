@@ -40,6 +40,14 @@ class AuthApi {
     await _post('logout', {'refreshToken': refreshToken});
   }
 
+  Future<void> forgotPassword(String email) async {
+    await _post('forgot-password', {'email': email});
+  }
+
+  Future<void> resetPassword(String token, String newPassword) async {
+    await _post('reset-password', {'token': token, 'newPassword': newPassword});
+  }
+
   Future<http.Response> _post(String path, Map<String, String> body) async {
     final response = await guardRequest(
       client.post(

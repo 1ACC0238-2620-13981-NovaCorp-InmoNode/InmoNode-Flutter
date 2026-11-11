@@ -40,6 +40,14 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<void> signOut(String refreshToken) => api.logout(refreshToken);
 
+  @override
+  Future<void> requestPasswordReset(String email) => api.forgotPassword(email);
+
+  @override
+  Future<void> resetPassword(String token, String newPassword) {
+    return api.resetPassword(token, newPassword);
+  }
+
   Account _toAccount(UserDto dto) {
     return Account(
       id: dto.id,

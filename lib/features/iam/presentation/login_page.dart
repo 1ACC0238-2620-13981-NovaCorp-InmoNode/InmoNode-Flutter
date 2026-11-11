@@ -4,6 +4,7 @@ import 'package:inmonode/core/widgets/loading_button.dart';
 import 'package:inmonode/core/widgets/message_banner.dart';
 import 'package:inmonode/features/iam/presentation/auth_scaffold.dart';
 import 'package:inmonode/features/iam/presentation/auth_validators.dart';
+import 'package:inmonode/features/iam/presentation/forgot_password_page.dart';
 import 'package:inmonode/features/iam/presentation/login_view_model.dart';
 import 'package:inmonode/features/iam/presentation/register_page.dart';
 import 'package:inmonode/features/iam/presentation/register_view_model.dart';
@@ -41,6 +42,10 @@ class _LoginPageState extends State<LoginPage> {
     Navigator.of(context).push(
       MaterialPageRoute(builder: (_) => RegisterPage(viewModel: viewModel)),
     );
+  }
+
+  void _openPasswordRecovery() {
+    Navigator.of(context).push(ForgotPasswordPage.route(email: _emailController.text.trim()));
   }
 
   @override
@@ -88,6 +93,13 @@ class _LoginPageState extends State<LoginPage> {
                     textInputAction: TextInputAction.done,
                     validator: AuthValidators.password,
                     onFieldSubmitted: (_) => _submit(),
+                  ),
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: viewModel.isLoading ? null : _openPasswordRecovery,
+                      child: const Text('¿Olvidaste tu contraseña?'),
+                    ),
                   ),
                   if (viewModel.errorMessage != null) ...[
                     const SizedBox(height: 16),

@@ -14,4 +14,10 @@ abstract class AuthRepository {
   Future<Session> refresh(String refreshToken);
 
   Future<void> signOut(String refreshToken);
+
+  /// Emails a single-use link to choose a new password, if [email] belongs to an active account.
+  Future<void> requestPasswordReset(String email);
+
+  /// Replaces the password of the account that owns the emailed [token].
+  Future<void> resetPassword(String token, String newPassword);
 }
