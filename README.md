@@ -67,11 +67,11 @@ features/catalog/
 
 ## Planificación
 
-El curso comprende tres Sprints, y todas las historias del Product Backlog se desarrollan dentro de ellos. Esta aplicación se construye completa en el Sprint 2. El Sprint 3 corresponde a la aplicación Android [InmoNode-Mobile](https://github.com/1ACC0238-2620-13981-NovaCorp-InmoNode/InmoNode-Mobile) y a las integraciones externas de los Web Services. De esas integraciones, el pago de cuotas con la pasarela (US-55) también llega a esta aplicación.
+El curso comprende tres Sprints, y todas las historias del Product Backlog se desarrollan dentro de ellos. Esta aplicación se construye en los Sprints 2 y 3, en paralelo con la aplicación Android [InmoNode-Mobile](https://github.com/1ACC0238-2620-13981-NovaCorp-InmoNode/InmoNode-Mobile). Los Web Services de todas sus historias ya están implementados, así que el trabajo de cada Sprint es la interfaz y su integración con los endpoints.
 
-### Sprint 2
+### Sprint 2: flujo de compra
 
-El objetivo es entregar el autoservicio completo del comprador y el back-office de catálogo y de verificación de comprobantes, en Android y en Chrome, contra los Web Services desplegados en Render. Los Web Services de todas estas historias ya están implementados, así que el trabajo del Sprint es la interfaz y su integración con los endpoints.
+El comprador crea su cuenta, explora y filtra el catálogo, simula y descarga su cotización, solicita la separación y adjunta su comprobante. El back-office publica el catálogo y verifica los comprobantes.
 
 | Feature | User Stories | Story Points |
 |---|---|---|
@@ -79,24 +79,38 @@ El objetivo es entregar el autoservicio completo del comprador y el back-office 
 | `catalog` | US-15, US-16 | 8 |
 | `quotations` | US-17, US-18 | 8 |
 | `separations` | US-19 | 8 |
-| `vouchers` | US-20, US-25 | 8 |
+| `vouchers` | US-20 | 5 |
+| `catalog_admin` | US-51, US-52, US-53 | 10 |
+| `verifications` | US-54 | 5 |
+| **Total** | **11 historias** | **49** |
+
+El resto del Sprint 2 (60 Story Points, 109 en total) está fuera de esta aplicación:
+
+- En InmoNode-Mobile, el flujo diferenciador del agente: US-03, US-06, US-07, US-09 y US-11.
+- En los Web Services, US-42 y US-46, más los spikes US-30, US-37 y US-48. Esta aplicación consume US-42 (estado de los lotes por WebSocket) en el catálogo y US-46 (paginación) en los listados de comprobantes.
+
+### Sprint 3: gestión posterior a la separación
+
+El comprador consulta su contrato, registra su conformidad y designa un co-titular. También revisa su estado de cuenta, recibe alertas de cuotas, descarga el certificado de no adeudo, consulta sus recibos validados y ve el consolidado de sus lotes.
+
+| Feature | User Stories | Story Points |
+|---|---|---|
+| `vouchers` | US-25 | 3 |
 | `contracts` | US-21, US-22, US-28 | 11 |
 | `account_statement` | US-23, US-24, US-26 | 15 |
 | `dashboard` | US-27 | 5 |
-| `catalog_admin` | US-51, US-52, US-53 | 10 |
-| `verifications` | US-54 | 5 |
-| **Total** | **19 historias** | **83** |
+| **Total** | **8 historias** | **34** |
 
-En el mismo Sprint, los Web Services completan dos historias técnicas que la aplicación consume: la actualización del estado de los lotes por WebSocket (US-42), en el catálogo, y la paginación (US-46), en los listados de comprobantes. También se realizan los spikes de pasarela, firma y mensajería (US-48, US-30 y US-37). Con estas historias técnicas, el Sprint 2 suma 109 Story Points.
+En el mismo Sprint, los Web Services integran el cobro de cuotas con la pasarela (US-55), que también llega a esta aplicación. Además se integran la firma electrónica (US-56) y la generación asíncrona de PDF (US-45).
 
-Dependencias entre historias:
+### Dependencias entre historias
 
 - **El inicio de sesión de US-14 se integra primero.** Todo el autoservicio requiere el rol `BUYER`, salvo el catálogo (US-15 y US-16), que es público. El back-office requiere `CATALOG_ADMIN` (US-51 a US-53) o `FINANCE_ADMIN` (US-54).
 - **Las cuentas de back-office no se crean desde la aplicación.** Las provee el backend: en desarrollo con los usuarios semilla y en Render con las variables `STAFF_CATALOG_ADMIN_*` y `STAFF_FINANCE_ADMIN_*`.
 - **Las historias se integran en el orden de sus flujos:**
   - US-51 → US-52 → US-53 (proyecto, lote y publicación).
   - US-17 → US-18 (simulación y descarga de la cotización).
-  - US-19 → US-20 → US-54 → US-25 (separación, comprobante, verificación e historial).
+  - US-19 → US-20 → US-54 (separación, comprobante y verificación) y, en el Sprint 3, → US-25 (historial).
   - US-21 → US-22 (contrato y conformidad).
   - US-23 → US-24, US-26 y US-27 (estado de cuenta, alertas, no adeudo y consolidado).
 
@@ -154,27 +168,27 @@ Se aplica GitFlow:
 
 Ramas de feature disponibles:
 
-| Rama | Feature |
-|---|---|
-| `feature/US-14-buyer-account` | `iam` |
-| `feature/US-15-project-catalog` | `catalog` |
-| `feature/US-16-lot-filters` | `catalog` |
-| `feature/US-17-financing-simulation` | `quotations` |
-| `feature/US-18-quotation-download` | `quotations` |
-| `feature/US-19-separation-request` | `separations` |
-| `feature/US-20-voucher-upload` | `vouchers` |
-| `feature/US-21-digital-contracts` | `contracts` |
-| `feature/US-22-contract-acknowledgment` | `contracts` |
-| `feature/US-23-account-statement` | `account_statement` |
-| `feature/US-24-installment-alerts` | `account_statement` |
-| `feature/US-25-validated-receipts` | `vouchers` |
-| `feature/US-26-no-debt-certificate` | `account_statement` |
-| `feature/US-27-assets-dashboard` | `dashboard` |
-| `feature/US-28-co-owner` | `contracts` |
-| `feature/US-51-project-registration` | `catalog_admin` |
-| `feature/US-52-lot-registration` | `catalog_admin` |
-| `feature/US-53-lot-publication` | `catalog_admin` |
-| `feature/US-54-voucher-verification` | `verifications` |
+| Rama | Feature | Sprint |
+|---|---|---|
+| `feature/US-14-buyer-account` | `iam` | 2 |
+| `feature/US-15-project-catalog` | `catalog` | 2 |
+| `feature/US-16-lot-filters` | `catalog` | 2 |
+| `feature/US-17-financing-simulation` | `quotations` | 2 |
+| `feature/US-18-quotation-download` | `quotations` | 2 |
+| `feature/US-19-separation-request` | `separations` | 2 |
+| `feature/US-20-voucher-upload` | `vouchers` | 2 |
+| `feature/US-21-digital-contracts` | `contracts` | 3 |
+| `feature/US-22-contract-acknowledgment` | `contracts` | 3 |
+| `feature/US-23-account-statement` | `account_statement` | 3 |
+| `feature/US-24-installment-alerts` | `account_statement` | 3 |
+| `feature/US-25-validated-receipts` | `vouchers` | 3 |
+| `feature/US-26-no-debt-certificate` | `account_statement` | 3 |
+| `feature/US-27-assets-dashboard` | `dashboard` | 3 |
+| `feature/US-28-co-owner` | `contracts` | 3 |
+| `feature/US-51-project-registration` | `catalog_admin` | 2 |
+| `feature/US-52-lot-registration` | `catalog_admin` | 2 |
+| `feature/US-53-lot-publication` | `catalog_admin` | 2 |
+| `feature/US-54-voucher-verification` | `verifications` | 2 |
 
 Flujo de trabajo:
 
