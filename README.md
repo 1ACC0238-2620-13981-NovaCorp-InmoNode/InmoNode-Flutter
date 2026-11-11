@@ -22,6 +22,14 @@ flutter test
 
 En Web se usa el puerto 5173 porque, en desarrollo, los enlaces de los correos apuntan a esta app: el de verificación a `http://localhost:5173/verify-email` (`VERIFICATION_URL` del backend) y el de recuperación de contraseña a `http://localhost:5173/reset-password` (`PASSWORD_RESET_URL`).
 
+La app consume los Web Services de Render. Para usar el backend local que levanta el Docker Compose de InmoNode-Backend, se indica su URL al compilar:
+
+```bash
+flutter run -d chrome --web-port 5173 --dart-define=API_BASE_URL=http://localhost:8080/api/v1
+```
+
+Con el backend local se usan las cuentas de personal de desarrollo (`CATALOG_ADMIN`, `FINANCE_ADMIN` y `FIELD_AGENT`) del seed de InmoNode-Backend, y los correos llegan a Mailpit (`http://localhost:8025`).
+
 ## Arquitectura
 
 Cada bounded context presente en la aplicación se organiza como un feature dentro de `lib/features/`, con cuatro capas:
@@ -44,6 +52,7 @@ lib/
 │   ├── theme.dart                      # Paleta y tema InmoNode
 │   ├── di/dependency_injection.dart    # Registro de dependencias (get_it)
 │   ├── network/                        # URL base, ApiException y AuthorizedClient
+│   ├── formatting/                     # Montos en soles, porcentajes y áreas
 │   └── widgets/                        # Componentes compartidos
 └── features/
     ├── iam/                            # Cuenta, sesión y roles
@@ -64,7 +73,7 @@ Ejemplo de un feature completo:
 ```
 features/catalog/
 ├── domain/            project.dart, lot.dart, project_repository.dart
-├── application/       get_projects_use_case.dart
+├── application/       get_published_projects_use_case.dart, get_project_detail_use_case.dart
 ├── infrastructure/    project_repository_impl.dart, remote/project_api.dart, remote/project_dto.dart
 └── presentation/      projects_page.dart, projects_view_model.dart, project_card.dart
 ```
