@@ -1,0 +1,62 @@
+name: Flutter CI
+
+on:
+  pull_request:
+    branches: [main, develop]
+  push:
+    branches: [main, develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: flutter-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze-and-test:
+    name: Analysis and tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: Set up Flutter 3.47.9
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.9
+          cache: true
+      - name: Get dependencies
+        run: flutter pub get
+      - name: Check that the acceptance tests match their .feature files
+        run: |
+          dart run build_runner build
+          git diff --exit-code -- test/acceptance
+          test -z "$(git status --porcelain -- test/acceptance)"
+      - name: Analyze
+        run: flutter analyze
+      - name: Unit and widget tests
+        run: flutter test --exclude-tags acceptance
+      - name: Acceptance scenarios (BDD)
+        run: |
+          mkdir -p build/acceptance
+          flutter test --tags acceptance --reporter expanded --file-reporter json:build/acceptance/results.json
+      - name: Acceptance report
+        if: always()
+        run: |
+          if [ -f build/acceptance/results.json ]; then
+            dart run tool/acceptance_report.dart build/acceptance/results.json > build/acceptance/report.md || true
+            cat build/acceptance/report.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - name: Upload acceptance results
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: acceptance-results
+          path: build/acceptance/
+          if-no-files-found: warn
+          retention-days: 30
