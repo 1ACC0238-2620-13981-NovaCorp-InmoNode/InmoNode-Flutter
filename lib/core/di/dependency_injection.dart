@@ -9,6 +9,15 @@ import 'package:inmonode/features/catalog/infrastructure/project_repository_impl
 import 'package:inmonode/features/catalog/infrastructure/remote/project_api.dart';
 import 'package:inmonode/features/catalog/presentation/project_detail_view_model.dart';
 import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
+import 'package:inmonode/features/catalog_admin/application/create_project_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/get_admin_project_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/publish_lot_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/publish_project_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/register_lot_use_case.dart';
+import 'package:inmonode/features/catalog_admin/domain/admin_catalog_repository.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/admin_catalog_repository_impl.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/remote/admin_catalog_api.dart';
+import 'package:inmonode/features/catalog_admin/presentation/admin_catalog_view_model.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
 import 'package:inmonode/features/iam/application/register_account_use_case.dart';
 import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
@@ -46,10 +55,45 @@ void setupDependencies() {
   _setupNetwork();
   _setupCatalog();
   _setupQuotations();
+  _setupCatalogAdmin();
+}
+
+void _setupCatalogAdmin() {
+  getIt.registerLazySingleton<AdminCatalogApi>(() => AdminCatalogApi(client: getIt<AuthorizedClient>()));
+  getIt.registerLazySingleton<AdminCatalogRepository>(
+    () => AdminCatalogRepositoryImpl(api: getIt<AdminCatalogApi>()),
+  );
+  getIt.registerLazySingleton<CreateProjectUseCase>(
+    () => CreateProjectUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<GetAdminProjectUseCase>(
+    () => GetAdminProjectUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<RegisterLotUseCase>(
+    () => RegisterLotUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<PublishProjectUseCase>(
+    () => PublishProjectUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<PublishLotUseCase>(
+    () => PublishLotUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  // Its section creates it once per session, since it holds the project being worked on.
+  getIt.registerFactory<AdminCatalogViewModel>(
+    () => AdminCatalogViewModel(
+      createProject: getIt<CreateProjectUseCase>(),
+      getProject: getIt<GetAdminProjectUseCase>(),
+      registerLot: getIt<RegisterLotUseCase>(),
+      publishProject: getIt<PublishProjectUseCase>(),
+      publishLot: getIt<PublishLotUseCase>(),
+    ),
+  );
 }
 
 void _setupQuotations() {
-  getIt.registerLazySingleton<QuotationApi>(() => QuotationApi(client: getIt<AuthorizedClient>()));
+  getIt.registerLazySingleton<QuotationApi>(
+    () => QuotationApi(client: getIt<AuthorizedClient>()),
+  );
   getIt.registerLazySingleton<QuotationRepository>(
     () => QuotationRepositoryImpl(api: getIt<QuotationApi>()),
   );
@@ -58,7 +102,10 @@ void _setupQuotations() {
   );
   // One simulator per lot: `getIt<SimulationViewModel>(param1: lot)`.
   getIt.registerFactoryParam<SimulationViewModel, QuotableLot, void>(
-    (lot, _) => SimulationViewModel(simulateFinancing: getIt<SimulateFinancingUseCase>(), lot: lot),
+    (lot, _) => SimulationViewModel(
+      simulateFinancing: getIt<SimulateFinancingUseCase>(),
+      lot: lot,
+    ),
   );
   // Its section creates it once per session, since it holds the buyer's simulations.
   getIt.registerFactory<SimulatorViewModel>(
@@ -83,10 +130,14 @@ void _setupCatalog() {
   );
   // A navigation section, not a pushed page: it keeps its catalog while the user switches sections.
   getIt.registerLazySingleton<ProjectsViewModel>(
-    () => ProjectsViewModel(getPublishedProjects: getIt<GetPublishedProjectsUseCase>()),
+    () => ProjectsViewModel(
+      getPublishedProjects: getIt<GetPublishedProjectsUseCase>(),
+    ),
   );
   getIt.registerFactory<ProjectDetailViewModel>(
-    () => ProjectDetailViewModel(getProjectDetail: getIt<GetProjectDetailUseCase>()),
+    () => ProjectDetailViewModel(
+      getProjectDetail: getIt<GetProjectDetailUseCase>(),
+    ),
   );
 }
 
