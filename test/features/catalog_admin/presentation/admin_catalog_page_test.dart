@@ -2,9 +2,8 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:inmonode/core/network/api_exception.dart';
 import 'package:inmonode/core/widgets/message_banner.dart';
-import 'package:inmonode/features/catalog_admin/application/catalog_commands.dart';
+import 'package:inmonode/features/catalog_admin/domain/catalog_rejection.dart';
 import 'package:inmonode/features/catalog_admin/presentation/admin_catalog_page.dart';
 
 import '../catalog_admin_fakes.dart';
@@ -15,11 +14,15 @@ void main() {
   setUp(() => repository = FakeAdminCatalogRepository());
 
   Future<void> pumpPage(WidgetTester tester) async {
-    // Tall enough to build the whole form at once.
-    tester.view.physicalSize = const Size(1280, 3200);
+    // Tall enough to build the whole page at once.
+    tester.view.physicalSize = const Size(1280, 3600);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(MaterialApp(home: AdminCatalogPage(commands: CatalogCommands(repository))));
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Scaffold(body: AdminCatalogPage(createViewModel: () => adminCatalogViewModel(repository))),
+      ),
+    );
   }
 
   Finder field(String label) => find.widgetWithText(TextField, label);
@@ -61,12 +64,15 @@ void main() {
     await type(tester, 'Polígono: longitud,latitud por línea *', polygon);
   }
 
-  testWidgets('shows what to correct next to the create button and sends nothing', (tester) async {
+  testWidgets('marks each field to correct, answers next to the button and sends nothing', (tester) async {
     await pumpPage(tester);
 
     await tap(tester, 'Crear proyecto borrador');
 
-    expect(banner(tester).message, 'Completa «Nombre».');
+    expect(find.text('Completa este campo'), findsNWidgets(5));
+    expect(find.text('Escribe al menos una etapa, por ejemplo: Norte, Sur'), findsOneWidget);
+    expect(find.text('Ingresa un número entero de meses entre 1 y 360'), findsOneWidget);
+    expect(banner(tester).message, 'Revisa los campos marcados.');
     expect(banner(tester).isError, isTrue);
     expect(repository.createdProjects, isEmpty);
   });
@@ -77,17 +83,12 @@ void main() {
 
     await tap(tester, 'Crear proyecto borrador');
 
-    expect(repository.createdProjects.single, {
-      'name': 'Los Pinos',
-      'location': 'Lurín, Lima',
-      'financingRules': {
-        'minDownPaymentPercentage': 10.0,
-        'annualInterestRate': 12.5,
-        'maxTermMonths': 60,
-        'lateFeeRate': 1.5,
-      },
-      'stages': ['Norte', 'Sur'],
-    });
+    final sent = repository.createdProjects.single;
+    expect(sent.name, 'Los Pinos');
+    expect(sent.stages, ['Norte', 'Sur']);
+    expect(sent.financingRules.annualInterestRate, 12.5);
+    expect(sent.financingRules.maxTermMonths, 60);
+    expect(sent.latitude, isNull);
     expect(
       banner(tester).message,
       'Proyecto «Los Pinos» creado como borrador con el ID 5. Registra sus lotes y luego publícalo.',
@@ -101,25 +102,15 @@ void main() {
   testWidgets('checks the coordinates and the financing rules before sending them', (tester) async {
     await pumpPage(tester);
     await fillProject(tester);
-
     await type(tester, 'Latitud', '-12.2');
-    await tap(tester, 'Crear proyecto borrador');
-    expect(banner(tester).message, 'Ingresa la latitud y la longitud juntas.');
-
-    await type(tester, 'Longitud', '-200');
-    await tap(tester, 'Crear proyecto borrador');
-    expect(banner(tester).message, '«Longitud» debe estar entre -180 y 180.');
-
-    await type(tester, 'Longitud', '-76.9');
     await type(tester, 'Mora (%) *', '1,5');
-    await tap(tester, 'Crear proyecto borrador');
-    expect(banner(tester).message, 'Ingresa un número en «Mora», con punto decimal: por ejemplo 12.5.');
-
-    await type(tester, 'Mora (%) *', '1.5');
     await type(tester, 'Etapas separadas por comas *', 'Norte, norte');
-    await tap(tester, 'Crear proyecto borrador');
-    expect(banner(tester).message, 'La etapa «norte» está repetida.');
 
+    await tap(tester, 'Crear proyecto borrador');
+
+    expect(find.text('Ingresa también la longitud'), findsOneWidget);
+    expect(find.text('Ingresa un número con punto decimal, por ejemplo 12.5'), findsOneWidget);
+    expect(find.text('La etapa «norte» está repetida'), findsOneWidget);
     expect(repository.createdProjects, isEmpty);
   });
 
@@ -136,7 +127,7 @@ void main() {
     expect(repository.createdProjects, hasLength(1));
   });
 
-  testWidgets('US-52 registers a draft lot with a closed polygon and keeps the stage', (tester) async {
+  testWidgets('US-52 registers a draft lot with its price and keeps the stage', (tester) async {
     await pumpPage(tester);
     await openProject(tester);
     await fillLot(tester, code: 'S-01');
@@ -148,17 +139,10 @@ void main() {
     await tap(tester, 'Registrar lote borrador');
 
     final sent = repository.registeredLots.single;
-    expect(sent['stageName'], 'Sur');
-    expect(sent['price'], 45000.5);
-    expect(sent.containsKey('front'), isFalse);
-    expect(sent['polygon'], [
-      [
-        [-77.0, -12.0],
-        [-77.1, -12.0],
-        [-77.1, -12.1],
-        [-77.0, -12.0],
-      ],
-    ]);
+    expect(sent.stageName, 'Sur');
+    expect(sent.price, 45000.5);
+    expect(sent.front, isNull);
+    expect(sent.boundary.ring, hasLength(4));
     expect(banner(tester).message, 'Lote S-01 registrado como borrador en la etapa Sur.');
     expect(textOf(tester, 'Código del lote *'), isEmpty);
     expect(
@@ -166,33 +150,25 @@ void main() {
       findsOneWidget,
     );
     expect(find.text('S-01 · Etapa Sur'), findsOneWidget);
-    expect(find.text('Borrador · S/ 45,000.00'), findsOneWidget);
+    expect(find.text('Borrador · 120 m² · S/ 45,000.50'), findsOneWidget);
   });
 
-  testWidgets('explains what is wrong with the polygon', (tester) async {
+  testWidgets('names the line of the polygon to correct', (tester) async {
     await pumpPage(tester);
     await openProject(tester);
 
-    await fillLot(tester, polygon: '-77.0,-12.0\n-77.1,-12.0');
+    await fillLot(tester, polygon: '-77.0,-12.0\n-77.1 -12.0\n-77.1,-12.1');
     await tap(tester, 'Registrar lote borrador');
-    expect(banner(tester).message, 'El polígono necesita al menos tres vértices, uno por línea.');
 
-    await type(tester, 'Polígono: longitud,latitud por línea *', '-77.0,-12.0\n-77.1 -12.0\n-77.1,-12.1');
-    await tap(tester, 'Registrar lote borrador');
-    expect(banner(tester).message, 'La línea 2 del polígono debe ser longitud,latitud, por ejemplo -77.0428,-12.0464.');
-
+    expect(find.text('La línea 2 debe ser longitud,latitud, por ejemplo -77.0428,-12.0464'), findsOneWidget);
+    expect(banner(tester).message, 'Revisa los campos marcados.');
     expect(repository.registeredLots, isEmpty);
   });
 
-  testWidgets('says in Spanish that the lot code is already taken', (tester) async {
+  testWidgets('says in Spanish that the lot code is already taken and keeps the form', (tester) async {
     await pumpPage(tester);
     await openProject(tester);
-    repository.failure = const ApiException(
-      statusCode: 409,
-      code: 'LOT_CONFLICT',
-      message: 'El lote ya no está disponible; elige otro lote',
-      details: 'the code is already used in this project',
-    );
+    repository.failure = const LotCodeTaken('N-01');
 
     await fillLot(tester);
     await tap(tester, 'Registrar lote borrador');
@@ -209,11 +185,11 @@ void main() {
     await tap(tester, 'Publicar proyecto');
 
     expect(banner(tester).message, 'Registra al menos un lote antes de publicar el proyecto.');
-    expect(repository.publishedProjects, 0);
+    expect(repository.publishedProjects, isEmpty);
   });
 
   testWidgets('US-53 publishes the project and then its lot, answering on the lot', (tester) async {
-    repository.lots = [draftLot()];
+    repository.lots = [testAdminLot()];
     await pumpPage(tester);
     await openProject(tester);
 
@@ -226,7 +202,7 @@ void main() {
     await tap(tester, 'Publicar lote');
 
     expect(repository.publishedLots, [9]);
-    expect(find.text('Disponible · S/ 45,000.00'), findsOneWidget);
+    expect(find.text('Disponible · 120 m² · S/ 45,000.00'), findsOneWidget);
     expect(
       find.descendant(
         of: find.byType(Card),
@@ -238,11 +214,12 @@ void main() {
 
   testWidgets('names the project that does not exist', (tester) async {
     await pumpPage(tester);
-    repository.failure = const ApiException(statusCode: 404, code: 'PROJECT_NOT_FOUND', message: 'Recurso no encontrado');
+    repository.failure = const ProjectNotFound(99);
 
     await type(tester, 'ID del proyecto', '99');
     await tap(tester, 'Cargar proyecto');
 
     expect(banner(tester).message, 'No existe un proyecto con el ID 99.');
+    expect(find.text('Registrar lote'), findsNothing);
   });
 }

@@ -1,103 +1,138 @@
-import 'dart:convert';
-
-import 'package:inmonode/core/network/api_constants.dart';
-import 'package:inmonode/core/network/api_response.dart';
-import 'package:inmonode/core/network/authorized_client.dart';
-
-import '../domain/admin_catalog.dart';
+import 'package:inmonode/core/network/api_exception.dart';
+import 'package:inmonode/features/catalog/domain/lot.dart';
+import 'package:inmonode/features/catalog_admin/domain/admin_catalog_repository.dart';
+import 'package:inmonode/features/catalog_admin/domain/admin_lot.dart';
+import 'package:inmonode/features/catalog_admin/domain/admin_project.dart';
+import 'package:inmonode/features/catalog_admin/domain/catalog_rejection.dart';
+import 'package:inmonode/features/catalog_admin/domain/new_lot.dart';
+import 'package:inmonode/features/catalog_admin/domain/new_project.dart';
+import 'package:inmonode/features/catalog_admin/domain/project_status.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/remote/admin_catalog_api.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/remote/admin_lot_dto.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/remote/admin_project_dto.dart';
 
 class AdminCatalogRepositoryImpl implements AdminCatalogRepository {
-  final AuthorizedClient client;
-  const AdminCatalogRepositoryImpl(this.client);
+  // The Web Services explain a broken rule in `details`, in English, under a generic code such as
+  // VALIDATION_ERROR or BUSINESS_RULE_VIOLATION.
+  static const List<(String, CatalogRejection)> _rulesInDetails = [
+    ('at least one lot', ProjectWithoutLots()),
+    ('Publish the project before', ProjectNotPublished()),
+    ('stageName does not belong', StageNotInProject()),
+    ('stage names must be unique', RepeatedStages()),
+    ('crosses itself or has no area', InvalidLotBoundary(BoundaryProblem.selfIntersecting)),
+    ('within range', InvalidLotBoundary(BoundaryProblem.outOfRange)),
+    ('needs at least', InvalidLotBoundary(BoundaryProblem.tooFewVertices)),
+  ];
 
-  AdminProject _project(Map<String, dynamic> data) => AdminProject(
-    (data['id'] as num).toInt(),
-    data['name'] as String,
-    data['status'] as String,
-    (data['stages'] as List<dynamic>).cast<String>(),
-  );
+  final AdminCatalogApi api;
 
-  AdminLot _lot(Map<String, dynamic> data) => AdminLot(
-    (data['id'] as num).toInt(),
-    data['code'] as String,
-    data['stageName'] as String,
-    data['status'] as String,
-    (data['price'] as num).toDouble(),
-  );
+  const AdminCatalogRepositoryImpl({required this.api});
 
   @override
-  Future<AdminProject> createProject(Map<String, dynamic> values) async {
-    final response = await guardRequest(
-      client.post(
-        Uri.parse('${ApiConstants.baseUrl}/catalog/projects'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(values),
-      ),
-    );
-    if (!response.isSuccessful) throw response.error;
-    return _project(response.json as Map<String, dynamic>);
+  Future<AdminProject> createProject(NewProject project) {
+    return _guard(() async => _toProject(await api.createProject(_toProjectRequest(project))));
   }
 
   @override
-  Future<AdminProject> getProject(int id) async {
-    final response = await guardRequest(
-      client.get(Uri.parse('${ApiConstants.baseUrl}/projects/$id')),
-    );
-    if (!response.isSuccessful) throw response.error;
-    return _project(response.json as Map<String, dynamic>);
+  Future<AdminProject> getProject(int projectId) {
+    return _guard(() async => _toProject(await api.getProject(projectId)), projectId: projectId);
   }
 
   @override
-  Future<AdminLot> registerLot(
-    int projectId,
-    Map<String, dynamic> values,
-  ) async {
-    final response = await guardRequest(
-      client.post(
-        Uri.parse('${ApiConstants.baseUrl}/catalog/projects/$projectId/lots'),
-        headers: ApiConstants.jsonHeaders,
-        body: jsonEncode(values),
-      ),
-    );
-    if (!response.isSuccessful) throw response.error;
-    return _lot(response.json as Map<String, dynamic>);
+  Future<List<AdminLot>> getProjectLots(int projectId) {
+    return _guard(() async => [for (final dto in await api.getLots(projectId)) _toLot(dto)], projectId: projectId);
   }
 
   @override
-  Future<List<AdminLot>> getLots(int projectId) async {
-    final response = await guardRequest(
-      client.get(
-        Uri.parse('${ApiConstants.baseUrl}/catalog/projects/$projectId/lots'),
-      ),
+  Future<AdminLot> registerLot(int projectId, NewLot lot) {
+    return _guard(
+      () async => _toLot(await api.registerLot(projectId, _toLotRequest(lot))),
+      projectId: projectId,
+      lotCode: lot.code,
     );
-    if (!response.isSuccessful) throw response.error;
-    return [
-      for (final item in response.json as List<dynamic>)
-        _lot(item as Map<String, dynamic>),
-    ];
   }
 
   @override
-  Future<AdminProject> publishProject(int id) async {
-    final response = await guardRequest(
-      client.put(
-        Uri.parse('${ApiConstants.baseUrl}/catalog/projects/$id/publish'),
-        headers: ApiConstants.jsonHeaders,
-      ),
-    );
-    if (!response.isSuccessful) throw response.error;
-    return _project(response.json as Map<String, dynamic>);
+  Future<AdminProject> publishProject(int projectId) {
+    return _guard(() async => _toProject(await api.publishProject(projectId)), projectId: projectId);
   }
 
   @override
-  Future<AdminLot> publishLot(int id) async {
-    final response = await guardRequest(
-      client.put(
-        Uri.parse('${ApiConstants.baseUrl}/catalog/lots/$id/publish'),
-        headers: ApiConstants.jsonHeaders,
-      ),
+  Future<AdminLot> publishLot(int lotId) => _guard(() async => _toLot(await api.publishLot(lotId)));
+
+  /// Turns the rejections the domain knows into a [CatalogRejection]; any other failure goes on as is.
+  Future<T> _guard<T>(Future<T> Function() request, {int? projectId, String? lotCode}) async {
+    try {
+      return await request();
+    } on ApiException catch (e) {
+      final rejection = _toRejection(e, projectId: projectId, lotCode: lotCode);
+      if (rejection == null) rethrow;
+      throw rejection;
+    }
+  }
+
+  CatalogRejection? _toRejection(ApiException error, {int? projectId, String? lotCode}) {
+    if (error.code == 'PROJECT_NOT_FOUND' && projectId != null) return ProjectNotFound(projectId);
+    if (error.code == 'LOT_NOT_FOUND') return const LotNotFound();
+    // Registering a lot only conflicts on its code; elsewhere LOT_CONFLICT means the lot is taken.
+    if (error.code == 'LOT_CONFLICT' && lotCode != null) return LotCodeTaken(lotCode);
+    final details = error.details;
+    if (details == null) return null;
+    for (final (fragment, rejection) in _rulesInDetails) {
+      if (details.contains(fragment)) return rejection;
+    }
+    return null;
+  }
+
+  CreateProjectRequestDto _toProjectRequest(NewProject project) {
+    final rules = project.financingRules;
+    return CreateProjectRequestDto(
+      name: project.name,
+      location: project.location,
+      latitude: project.latitude,
+      longitude: project.longitude,
+      coverImageUrl: project.coverImageUrl,
+      minDownPaymentPercentage: rules.minDownPaymentPercentage,
+      annualInterestRate: rules.annualInterestRate,
+      maxTermMonths: rules.maxTermMonths,
+      lateFeeRate: rules.lateFeeRate,
+      stages: project.stages,
     );
-    if (!response.isSuccessful) throw response.error;
-    return _lot(response.json as Map<String, dynamic>);
+  }
+
+  RegisterLotRequestDto _toLotRequest(NewLot lot) {
+    return RegisterLotRequestDto(
+      code: lot.code,
+      stageName: lot.stageName,
+      area: lot.area,
+      front: lot.front,
+      depth: lot.depth,
+      price: lot.price,
+      ring: [
+        for (final vertex in lot.boundary.ring) [vertex.longitude, vertex.latitude],
+      ],
+    );
+  }
+
+  AdminProject _toProject(AdminProjectDto dto) {
+    return AdminProject(
+      id: dto.id,
+      name: dto.name,
+      location: dto.location,
+      status: ProjectStatus.fromApiName(dto.status),
+      stages: dto.stages,
+    );
+  }
+
+  AdminLot _toLot(AdminLotDto dto) {
+    return AdminLot(
+      id: dto.id,
+      code: dto.code,
+      stageName: dto.stageName,
+      area: dto.area,
+      price: dto.price,
+      currency: dto.currency,
+      status: LotStatus.fromApiName(dto.status),
+    );
   }
 }

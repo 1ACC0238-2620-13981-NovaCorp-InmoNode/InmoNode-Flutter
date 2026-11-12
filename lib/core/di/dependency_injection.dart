@@ -9,9 +9,15 @@ import 'package:inmonode/features/catalog/infrastructure/project_repository_impl
 import 'package:inmonode/features/catalog/infrastructure/remote/project_api.dart';
 import 'package:inmonode/features/catalog/presentation/project_detail_view_model.dart';
 import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
-import 'package:inmonode/features/catalog_admin/application/catalog_commands.dart';
-import 'package:inmonode/features/catalog_admin/domain/admin_catalog.dart';
+import 'package:inmonode/features/catalog_admin/application/create_project_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/get_admin_project_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/publish_lot_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/publish_project_use_case.dart';
+import 'package:inmonode/features/catalog_admin/application/register_lot_use_case.dart';
+import 'package:inmonode/features/catalog_admin/domain/admin_catalog_repository.dart';
 import 'package:inmonode/features/catalog_admin/infrastructure/admin_catalog_repository_impl.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/remote/admin_catalog_api.dart';
+import 'package:inmonode/features/catalog_admin/presentation/admin_catalog_view_model.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
 import 'package:inmonode/features/iam/application/register_account_use_case.dart';
 import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
@@ -53,11 +59,34 @@ void setupDependencies() {
 }
 
 void _setupCatalogAdmin() {
+  getIt.registerLazySingleton<AdminCatalogApi>(() => AdminCatalogApi(client: getIt<AuthorizedClient>()));
   getIt.registerLazySingleton<AdminCatalogRepository>(
-    () => AdminCatalogRepositoryImpl(getIt<AuthorizedClient>()),
+    () => AdminCatalogRepositoryImpl(api: getIt<AdminCatalogApi>()),
   );
-  getIt.registerLazySingleton<CatalogCommands>(
-    () => CatalogCommands(getIt<AdminCatalogRepository>()),
+  getIt.registerLazySingleton<CreateProjectUseCase>(
+    () => CreateProjectUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<GetAdminProjectUseCase>(
+    () => GetAdminProjectUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<RegisterLotUseCase>(
+    () => RegisterLotUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<PublishProjectUseCase>(
+    () => PublishProjectUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  getIt.registerLazySingleton<PublishLotUseCase>(
+    () => PublishLotUseCase(repository: getIt<AdminCatalogRepository>()),
+  );
+  // Its section creates it once per session, since it holds the project being worked on.
+  getIt.registerFactory<AdminCatalogViewModel>(
+    () => AdminCatalogViewModel(
+      createProject: getIt<CreateProjectUseCase>(),
+      getProject: getIt<GetAdminProjectUseCase>(),
+      registerLot: getIt<RegisterLotUseCase>(),
+      publishProject: getIt<PublishProjectUseCase>(),
+      publishLot: getIt<PublishLotUseCase>(),
+    ),
   );
 }
 

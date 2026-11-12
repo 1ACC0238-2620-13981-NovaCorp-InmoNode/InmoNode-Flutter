@@ -3,8 +3,8 @@ import 'package:inmonode/core/di/dependency_injection.dart';
 import 'package:inmonode/core/widgets/section_placeholder.dart';
 import 'package:inmonode/features/catalog/presentation/projects_page.dart';
 import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
-import 'package:inmonode/features/catalog_admin/application/catalog_commands.dart';
 import 'package:inmonode/features/catalog_admin/presentation/admin_catalog_page.dart';
+import 'package:inmonode/features/catalog_admin/presentation/admin_catalog_view_model.dart';
 import 'package:inmonode/features/iam/domain/user_role.dart';
 import 'package:inmonode/features/iam/presentation/profile_page.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
@@ -59,8 +59,9 @@ class RoleHomePage extends StatelessWidget {
             label: 'Catálogo',
             icon: Icons.map_outlined,
             selectedIcon: Icons.map,
-            builder: (_) =>
-                AdminCatalogPage(commands: getIt<CatalogCommands>()),
+            builder: (_) => AdminCatalogPage(
+              createViewModel: () => getIt<AdminCatalogViewModel>(),
+            ),
           ),
           profile,
         ],
