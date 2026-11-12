@@ -4,11 +4,14 @@ import 'package:inmonode/core/formatting/formats.dart';
 import 'package:inmonode/core/widgets/message_banner.dart';
 import 'package:inmonode/features/catalog/domain/financing_rules.dart';
 import 'package:inmonode/features/catalog/domain/lot.dart';
+import 'package:inmonode/features/catalog/domain/project.dart';
 import 'package:inmonode/features/catalog/domain/project_summary.dart';
 import 'package:inmonode/features/catalog/presentation/catalog_labels.dart';
 import 'package:inmonode/features/catalog/presentation/project_card.dart';
 import 'package:inmonode/features/catalog/presentation/project_cover.dart';
 import 'package:inmonode/features/catalog/presentation/project_detail_view_model.dart';
+import 'package:inmonode/features/quotations/domain/quotable_lot.dart';
+import 'package:inmonode/features/quotations/presentation/simulation_page.dart';
 
 /// A project with its financing conditions, stages and lots. The card's data shows while the rest loads.
 class ProjectDetailPage extends StatefulWidget {
@@ -39,6 +42,12 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
   void dispose() {
     widget.viewModel.dispose();
     super.dispose();
+  }
+
+  Future<void> _simulate(Project project, Lot lot) async {
+    await Navigator.of(context).push(SimulationPage.route(QuotableLot.of(project, lot)));
+    // Another buyer may have reserved the lot meanwhile.
+    if (mounted) widget.viewModel.load(widget.summary.id);
   }
 
   @override
@@ -118,6 +127,14 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                       'Lotes',
                       trailing: '${viewModel.availableLots} de ${viewModel.lots.length} disponibles',
                     ),
+                    if (viewModel.availableLots > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: Text(
+                          'Elige un lote disponible para simular su financiamiento.',
+                          style: theme.textTheme.bodySmall,
+                        ),
+                      ),
                     if (viewModel.lots.isEmpty)
                       const Text('Este proyecto aún no tiene lotes publicados.')
                     else
@@ -128,7 +145,10 @@ class _ProjectDetailPageState extends State<ProjectDetailPage> {
                           children: [
                             for (final (index, lot) in viewModel.lots.indexed) ...[
                               if (index > 0) const Divider(height: 1),
-                              LotTile(lot: lot),
+                              LotTile(
+                                lot: lot,
+                                onSimulate: lot.isAvailable ? () => _simulate(project, lot) : null,
+                              ),
                             ],
                           ],
                         ),
@@ -176,9 +196,9 @@ class _FinancingRulesSection extends StatelessWidget {
   Widget build(BuildContext context) {
     final facts = [
       ('Cuota inicial mínima', Formats.percent(rules.minDownPaymentPercentage)),
-      ('Tasa de interés anual', Formats.percent(rules.annualInterestRate)),
+      ('Tasa de interés anual', Formats.rate(rules.annualInterestRate)),
       ('Plazo máximo', '${rules.maxTermMonths} meses'),
-      ('Tasa de mora', Formats.percent(rules.lateFeeRate)),
+      ('Tasa de mora', Formats.rate(rules.lateFeeRate)),
     ];
     final theme = Theme.of(context);
     return Column(
@@ -214,11 +234,12 @@ class _FinancingRulesSection extends StatelessWidget {
   }
 }
 
-/// A lot with its code, measures, price and availability.
+/// A lot with its code, measures, price and availability. An available lot opens its simulator.
 class LotTile extends StatelessWidget {
   final Lot lot;
+  final VoidCallback? onSimulate;
 
-  const LotTile({super.key, required this.lot});
+  const LotTile({super.key, required this.lot, this.onSimulate});
 
   @override
   Widget build(BuildContext context) {
@@ -229,18 +250,29 @@ class LotTile extends StatelessWidget {
       Formats.area(lot.area),
       if (front != null && depth != null) '${Formats.meters(front)} × ${Formats.meters(depth)}',
     ];
+    final priceAndStatus = Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        Text(Formats.money(lot.price, currency: lot.currency), style: theme.textTheme.titleSmall),
+        const SizedBox(height: 4),
+        LotStatusLabel(status: lot.status),
+      ],
+    );
     return ListTile(
       title: Text('Lote ${lot.code}'),
       subtitle: Text(measures.join(' · ')),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          Text(Formats.money(lot.price, currency: lot.currency), style: theme.textTheme.titleSmall),
-          const SizedBox(height: 4),
-          LotStatusLabel(status: lot.status),
-        ],
-      ),
+      onTap: onSimulate,
+      trailing: onSimulate == null
+          ? priceAndStatus
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                priceAndStatus,
+                const SizedBox(width: 8),
+                const Tooltip(message: 'Simular financiamiento', child: Icon(Icons.calculate_outlined)),
+              ],
+            ),
     );
   }
 }

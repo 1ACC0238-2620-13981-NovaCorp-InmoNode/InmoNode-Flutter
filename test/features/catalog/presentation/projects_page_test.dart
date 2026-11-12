@@ -8,16 +8,26 @@ import 'package:inmonode/features/catalog/domain/lot.dart';
 import 'package:inmonode/features/catalog/presentation/project_detail_view_model.dart';
 import 'package:inmonode/features/catalog/presentation/projects_page.dart';
 import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
+import 'package:inmonode/features/quotations/application/simulate_financing_use_case.dart';
+import 'package:inmonode/features/quotations/domain/quotable_lot.dart';
+import 'package:inmonode/features/quotations/presentation/simulation_view_model.dart';
 
+import '../../quotations/quotation_fakes.dart';
 import '../catalog_fakes.dart';
 
 void main() {
   late FakeProjectRepository repository;
 
+  late FakeQuotationRepository quotations;
+
   setUp(() {
     repository = FakeProjectRepository();
+    quotations = FakeQuotationRepository()..onSimulate = (_) async => testQuotation();
     getIt.registerFactory<ProjectDetailViewModel>(
       () => ProjectDetailViewModel(getProjectDetail: GetProjectDetailUseCase(repository: repository)),
+    );
+    getIt.registerFactoryParam<SimulationViewModel, QuotableLot, void>(
+      (lot, _) => SimulationViewModel(simulateFinancing: SimulateFinancingUseCase(repository: quotations), lot: lot),
     );
   });
 
@@ -112,5 +122,39 @@ void main() {
     expect(find.text('1 de 2 disponibles'), findsOneWidget);
     expect(find.text('Reservado'), findsOneWidget);
     expect(find.text('120 m² · 8 m × 15 m'), findsNWidgets(2));
+  });
+
+  testWidgets('simulates an available lot from its project and refreshes the lots afterwards', (tester) async {
+    tester.view.physicalSize = const Size(1280, 900);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    var lotLoads = 0;
+    repository.onGetPublished = () async => [testSummary()];
+    repository.onGetProject = (_) async => testProject();
+    repository.onGetLots = (_) async {
+      lotLoads++;
+      return [testLot(id: 1, code: 'A-01'), testLot(id: 2, code: 'A-02', status: LotStatus.reserved)];
+    };
+    await pumpProjectsPage(tester);
+    await tester.tap(find.text('Villa del Sol'));
+    await tester.pumpAndSettle();
+
+    // Only the available lot opens the simulator.
+    await tester.scrollUntilVisible(find.text('Lote A-02'), 200);
+    await tester.tap(find.text('Lote A-02'));
+    await tester.pumpAndSettle();
+    expect(find.text('Simular financiamiento'), findsNothing);
+
+    await tester.tap(find.text('Lote A-01'));
+    await tester.pumpAndSettle();
+    expect(find.text('Simular financiamiento'), findsNWidgets(2));
+    expect(find.text('Mínimo S/ 4,500.00 (10 % del precio)'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Simular financiamiento'));
+    await tester.pumpAndSettle();
+    expect(quotations.calls.single, (lotId: 1, initialPayment: 4500.0, termMonths: 60));
+
+    await tester.pageBack();
+    await tester.pumpAndSettle();
+    expect(lotLoads, 2);
   });
 }

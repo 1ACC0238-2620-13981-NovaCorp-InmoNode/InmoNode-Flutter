@@ -8,6 +8,8 @@ import 'package:inmonode/features/iam/presentation/profile_page.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
 import 'package:inmonode/features/main/role_shell.dart';
 import 'package:inmonode/features/main/unsupported_role_page.dart';
+import 'package:inmonode/features/quotations/presentation/simulator_page.dart';
+import 'package:inmonode/features/quotations/presentation/simulator_view_model.dart';
 
 /// Sends each role to its own navigation. Each story replaces its placeholder with its page.
 class RoleHomePage extends StatelessWidget {
@@ -42,11 +44,7 @@ class RoleHomePage extends StatelessWidget {
             label: 'Simulador',
             icon: Icons.calculate_outlined,
             selectedIcon: Icons.calculate,
-            builder: (_) => const SectionPlaceholder(
-              title: 'Simulador',
-              icon: Icons.calculate,
-              message: 'La simulación de financiamiento estará disponible pronto (US-17).',
-            ),
+            builder: (_) => SimulatorPage(createViewModel: () => getIt<SimulatorViewModel>()),
           ),
           profile,
         ],

@@ -31,6 +31,13 @@ import 'package:inmonode/features/iam/presentation/resend_verification_view_mode
 import 'package:inmonode/features/iam/presentation/reset_password_view_model.dart';
 import 'package:inmonode/features/iam/presentation/session_view_model.dart';
 import 'package:inmonode/features/iam/presentation/verify_email_view_model.dart';
+import 'package:inmonode/features/quotations/application/simulate_financing_use_case.dart';
+import 'package:inmonode/features/quotations/domain/quotable_lot.dart';
+import 'package:inmonode/features/quotations/domain/quotation_repository.dart';
+import 'package:inmonode/features/quotations/infrastructure/quotation_repository_impl.dart';
+import 'package:inmonode/features/quotations/infrastructure/remote/quotation_api.dart';
+import 'package:inmonode/features/quotations/presentation/simulation_view_model.dart';
+import 'package:inmonode/features/quotations/presentation/simulator_view_model.dart';
 
 final getIt = GetIt.instance;
 
@@ -38,6 +45,29 @@ void setupDependencies() {
   _setupIam();
   _setupNetwork();
   _setupCatalog();
+  _setupQuotations();
+}
+
+void _setupQuotations() {
+  getIt.registerLazySingleton<QuotationApi>(() => QuotationApi(client: getIt<AuthorizedClient>()));
+  getIt.registerLazySingleton<QuotationRepository>(
+    () => QuotationRepositoryImpl(api: getIt<QuotationApi>()),
+  );
+  getIt.registerLazySingleton<SimulateFinancingUseCase>(
+    () => SimulateFinancingUseCase(repository: getIt<QuotationRepository>()),
+  );
+  // One simulator per lot: `getIt<SimulationViewModel>(param1: lot)`.
+  getIt.registerFactoryParam<SimulationViewModel, QuotableLot, void>(
+    (lot, _) => SimulationViewModel(simulateFinancing: getIt<SimulateFinancingUseCase>(), lot: lot),
+  );
+  // Its section creates it once per session, since it holds the buyer's simulations.
+  getIt.registerFactory<SimulatorViewModel>(
+    () => SimulatorViewModel(
+      getPublishedProjects: getIt<GetPublishedProjectsUseCase>(),
+      getProjectDetail: getIt<GetProjectDetailUseCase>(),
+      createSimulation: (lot) => getIt<SimulationViewModel>(param1: lot),
+    ),
+  );
 }
 
 void _setupCatalog() {

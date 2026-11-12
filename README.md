@@ -52,7 +52,7 @@ lib/
 │   ├── theme.dart                      # Paleta y tema InmoNode
 │   ├── di/dependency_injection.dart    # Registro de dependencias (get_it)
 │   ├── network/                        # URL base, ApiException y AuthorizedClient
-│   ├── formatting/                     # Montos en soles, porcentajes y áreas
+│   ├── formatting/                     # Montos en soles, tasas, áreas y fechas
 │   └── widgets/                        # Componentes compartidos
 └── features/
     ├── iam/                            # Cuenta, sesión y roles
