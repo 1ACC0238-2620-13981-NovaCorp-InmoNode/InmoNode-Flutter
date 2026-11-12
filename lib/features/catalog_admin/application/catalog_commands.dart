@@ -11,6 +11,9 @@ class CatalogCommands {
   Future<List<AdminLot>> getLots(int projectId) =>
       repository.getLots(projectId);
 
+  Future<AdminProject> publishProject(int id) => repository.publishProject(id);
+  Future<AdminLot> publishLot(int id) => repository.publishLot(id);
+
   Future<AdminLot> registerLot(int projectId, Map<String, dynamic> values) {
     final points = values['polygon'] as List<List<List<double>>>;
     if (points.length != 1 ||

@@ -22,4 +22,6 @@ abstract class AdminCatalogRepository {
   Future<AdminProject> getProject(int id);
   Future<AdminLot> registerLot(int projectId, Map<String, dynamic> values);
   Future<List<AdminLot>> getLots(int projectId);
+  Future<AdminProject> publishProject(int id);
+  Future<AdminLot> publishLot(int id);
 }
