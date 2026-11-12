@@ -68,7 +68,7 @@ void main() {
     expect(first.lot.lotCode, 'A-01');
     expect(viewModel.simulation?.lot.lotCode, 'A-03');
     expect(created, hasLength(2));
-    expect(() => first.addListener(() {}), throwsFlutterError);
+    expect(() => first.addListener(() {}), throwsA(predicate((error) => error.toString().contains('disposed'))));
   });
 
   test('forgets the chosen lot when the buyer picks another project', () async {
