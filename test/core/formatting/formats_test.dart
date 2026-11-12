@@ -13,6 +13,26 @@ void main() {
     expect(Formats.percent(12.5), '12.5 %');
   });
 
+  test('keeps the second decimal of interest rates', () {
+    expect(Formats.rate(12.68), '12.68 %');
+    expect(Formats.rate(12.5), '12.5 %');
+    expect(Formats.rate(10), '10 %');
+  });
+
+  test('writes dates as day, month and year', () {
+    expect(Formats.date(DateTime(2027, 2, 1)), '01/02/2027');
+    expect(Formats.time(DateTime(2027, 2, 1, 18, 5)), '18:05');
+  });
+
+  test('reads the amounts the buyer types', () {
+    expect(Formats.parseAmount('4500'), 4500);
+    expect(Formats.parseAmount('4,500.50'), 4500.5);
+    expect(Formats.parseAmount(' S/ 4500.5 '), 4500.5);
+    expect(Formats.parseAmount('4500.555'), isNull);
+    expect(Formats.parseAmount('4.500,00'), isNull);
+    expect(Formats.parseAmount(''), isNull);
+  });
+
   test('writes areas and lengths in meters', () {
     expect(Formats.area(120), '120 m²');
     expect(Formats.area(98.75), '98.75 m²');
