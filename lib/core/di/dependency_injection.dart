@@ -9,6 +9,9 @@ import 'package:inmonode/features/catalog/infrastructure/project_repository_impl
 import 'package:inmonode/features/catalog/infrastructure/remote/project_api.dart';
 import 'package:inmonode/features/catalog/presentation/project_detail_view_model.dart';
 import 'package:inmonode/features/catalog/presentation/projects_view_model.dart';
+import 'package:inmonode/features/catalog_admin/application/catalog_commands.dart';
+import 'package:inmonode/features/catalog_admin/domain/admin_catalog.dart';
+import 'package:inmonode/features/catalog_admin/infrastructure/admin_catalog_repository_impl.dart';
 import 'package:inmonode/features/iam/application/refresh_session_use_case.dart';
 import 'package:inmonode/features/iam/application/register_account_use_case.dart';
 import 'package:inmonode/features/iam/application/request_password_reset_use_case.dart';
@@ -46,10 +49,22 @@ void setupDependencies() {
   _setupNetwork();
   _setupCatalog();
   _setupQuotations();
+  _setupCatalogAdmin();
+}
+
+void _setupCatalogAdmin() {
+  getIt.registerLazySingleton<AdminCatalogRepository>(
+    () => AdminCatalogRepositoryImpl(getIt<AuthorizedClient>()),
+  );
+  getIt.registerLazySingleton<CatalogCommands>(
+    () => CatalogCommands(getIt<AdminCatalogRepository>()),
+  );
 }
 
 void _setupQuotations() {
-  getIt.registerLazySingleton<QuotationApi>(() => QuotationApi(client: getIt<AuthorizedClient>()));
+  getIt.registerLazySingleton<QuotationApi>(
+    () => QuotationApi(client: getIt<AuthorizedClient>()),
+  );
   getIt.registerLazySingleton<QuotationRepository>(
     () => QuotationRepositoryImpl(api: getIt<QuotationApi>()),
   );
@@ -58,7 +73,10 @@ void _setupQuotations() {
   );
   // One simulator per lot: `getIt<SimulationViewModel>(param1: lot)`.
   getIt.registerFactoryParam<SimulationViewModel, QuotableLot, void>(
-    (lot, _) => SimulationViewModel(simulateFinancing: getIt<SimulateFinancingUseCase>(), lot: lot),
+    (lot, _) => SimulationViewModel(
+      simulateFinancing: getIt<SimulateFinancingUseCase>(),
+      lot: lot,
+    ),
   );
   // Its section creates it once per session, since it holds the buyer's simulations.
   getIt.registerFactory<SimulatorViewModel>(
@@ -83,10 +101,14 @@ void _setupCatalog() {
   );
   // A navigation section, not a pushed page: it keeps its catalog while the user switches sections.
   getIt.registerLazySingleton<ProjectsViewModel>(
-    () => ProjectsViewModel(getPublishedProjects: getIt<GetPublishedProjectsUseCase>()),
+    () => ProjectsViewModel(
+      getPublishedProjects: getIt<GetPublishedProjectsUseCase>(),
+    ),
   );
   getIt.registerFactory<ProjectDetailViewModel>(
-    () => ProjectDetailViewModel(getProjectDetail: getIt<GetProjectDetailUseCase>()),
+    () => ProjectDetailViewModel(
+      getProjectDetail: getIt<GetProjectDetailUseCase>(),
+    ),
   );
 }
 
