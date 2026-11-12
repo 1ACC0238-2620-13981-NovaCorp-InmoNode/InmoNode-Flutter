@@ -173,6 +173,22 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
     if (mounted) setState(() => message = 'Lote registrado como borrador.');
   });
 
+  Future<void> _publishProject() => _run(() async {
+    final selected = project;
+    if (selected == null) return;
+    await widget.commands.publishProject(selected.id);
+    await _load(selected.id);
+    if (mounted) setState(() => message = 'Proyecto publicado.');
+  });
+
+  Future<void> _publishLot(int id) => _run(() async {
+    final selected = project;
+    if (selected == null) return;
+    await widget.commands.publishLot(id);
+    await _load(selected.id);
+    if (mounted) setState(() => message = 'Lote publicado.');
+  });
+
   Widget _field(String name, String label, {String? hint, int lines = 1}) =>
       TextField(
         controller: inputs[name],
@@ -235,6 +251,13 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
                   '${project!.name} · ${project!.status} · ID ${project!.id}',
                 ),
               if (project != null) ...[
+                const SizedBox(height: 8),
+                FilledButton.tonal(
+                  onPressed: busy || project!.status == 'PUBLISHED'
+                      ? null
+                      : _publishProject,
+                  child: const Text('Publicar proyecto'),
+                ),
                 const SizedBox(height: 20),
                 Text('Registrar lote', style: theme.textTheme.titleLarge),
                 _field('code', 'Código del lote *', hint: 'N-01'),
@@ -279,6 +302,14 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
                       subtitle: Text(
                         '${item.status} · ${Formats.money(item.price)}',
                       ),
+                      trailing: item.status == 'DRAFT'
+                          ? TextButton(
+                              onPressed: busy || project!.status != 'PUBLISHED'
+                                  ? null
+                                  : () => _publishLot(item.id),
+                              child: const Text('Publicar lote'),
+                            )
+                          : null,
                     ),
                   ),
               ],

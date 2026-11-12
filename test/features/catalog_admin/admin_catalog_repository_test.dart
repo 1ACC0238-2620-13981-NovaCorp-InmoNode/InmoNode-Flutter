@@ -99,4 +99,48 @@ void main() {
       polygon,
     );
   });
+
+  test('US-53 publishes a project before its draft lot', () async {
+    final calls = <http.Request>[];
+    final client = AuthorizedClient(
+      tokenProvider: _Tokens(),
+      inner: MockClient((request) async {
+        calls.add(request);
+        if (request.url.path.endsWith('/projects/5/publish')) {
+          return http.Response(
+            jsonEncode({
+              'id': 5,
+              'name': 'Los Pinos',
+              'status': 'PUBLISHED',
+              'stages': ['Norte'],
+            }),
+            200,
+          );
+        }
+        return http.Response(
+          jsonEncode({
+            'id': 9,
+            'code': 'N-01',
+            'stageName': 'Norte',
+            'status': 'AVAILABLE',
+            'price': 45000,
+          }),
+          200,
+        );
+      }),
+    );
+    final repo = AdminCatalogRepositoryImpl(client);
+    final project = await repo.publishProject(5);
+    final lot = await repo.publishLot(9);
+    expect(project.status, 'PUBLISHED');
+    expect(lot.status, 'AVAILABLE');
+    expect(calls.map((r) => '${r.method} ${r.url.path}').toList(), [
+      'PUT /api/v1/catalog/projects/5/publish',
+      'PUT /api/v1/catalog/lots/9/publish',
+    ]);
+    expect(
+      calls.every((r) => r.headers['Authorization'] == 'Bearer test-token'),
+      isTrue,
+    );
+  });
 }
