@@ -30,6 +30,32 @@ flutter run -d chrome --web-port 5173 --dart-define=API_BASE_URL=http://localhos
 
 Con el backend local se usan las cuentas de personal de desarrollo (`CATALOG_ADMIN`, `FINANCE_ADMIN` y `FIELD_AGENT`) del seed de InmoNode-Backend, y los correos llegan a Mailpit (`http://localhost:8025`).
 
+## Pruebas de aceptación (BDD)
+
+Los criterios de aceptación de las historias del Sprint 2 (US-14, US-15, US-17, US-51, US-52 y US-53) están escritos en Gherkin en `test/acceptance/*.feature`, con dos escenarios por historia. A partir de cada feature, `bdd_widget_test` genera su runner (`*_test.dart`), que llama a los steps de `test/acceptance/step/`.
+
+Cada escenario abre la app completa, cableada como en `main.dart`, contra los Web Services en memoria de `test/acceptance/support/`, sin llamar a Render. Estos reproducen las reglas del backend:
+
+- el rechazo del correo duplicado;
+- las cifras del catálogo, que excluyen los lotes en borrador;
+- las reglas de publicación;
+- la validación del polígono;
+- la amortización francesa de las cotizaciones.
+
+El administrador y el comprador comparten el mismo catálogo, así que lo que publica uno es lo que ve el otro.
+
+```bash
+dart run build_runner build              # Tras editar un .feature: regenera los runners y crea los steps nuevos
+flutter test --tags acceptance           # Los escenarios de aceptación; --tags US-17 corre una sola historia
+flutter test --exclude-tags acceptance   # Pruebas unitarias y de widgets
+```
+
+Los runners generados se versionan, y los steps existentes nunca se sobrescriben.
+
+## Integración continua
+
+`.github/workflows/flutter-ci.yml` se ejecuta en cada PR y en cada push a `develop` y `main`. Comprueba que los runners coincidan con sus `.feature` y luego corre `flutter analyze`, las pruebas unitarias y de widgets y los escenarios de aceptación. El resumen del job muestra el resultado de cada escenario, generado por `tool/acceptance_report.dart`. El artefacto `acceptance-results` guarda `results.json` y `report.md`.
+
 ## Despliegue
 
 Ambas versiones consumen los Web Services de Render. Antes de cada entrega se incrementa `version` en `pubspec.yaml`: el número tras `+` es el `versionCode` de Android y debe crecer en cada APK distribuido.
