@@ -1,0 +1,12 @@
+# Generates the acceptance tests of test/acceptance from their .feature files (bdd_widget_test).
+targets:
+  $default:
+    builders:
+      bdd_widget_test|featureBuilder:
+        options:
+          # A "quoted" value or a number in a step is passed to its function.
+          literalParameters: true
+          addHooks: true
+          # Replaces the default imports, which include package:material_ui, not a dependency of the app.
+          customHeaders:
+            - "import 'package:flutter_test/flutter_test.dart';"

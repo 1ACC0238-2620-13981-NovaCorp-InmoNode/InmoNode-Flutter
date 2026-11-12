@@ -1,0 +1,9 @@
+# Tags of the acceptance scenarios: `flutter test --tags acceptance` runs them all, `--tags US-17` one story.
+tags:
+  acceptance:
+  US-14:
+  US-15:
+  US-17:
+  US-51:
+  US-52:
+  US-53:
