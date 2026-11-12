@@ -76,4 +76,28 @@ class AdminCatalogRepositoryImpl implements AdminCatalogRepository {
         _lot(item as Map<String, dynamic>),
     ];
   }
+
+  @override
+  Future<AdminProject> publishProject(int id) async {
+    final response = await guardRequest(
+      client.put(
+        Uri.parse('${ApiConstants.baseUrl}/catalog/projects/$id/publish'),
+        headers: ApiConstants.jsonHeaders,
+      ),
+    );
+    if (!response.isSuccessful) throw response.error;
+    return _project(response.json as Map<String, dynamic>);
+  }
+
+  @override
+  Future<AdminLot> publishLot(int id) async {
+    final response = await guardRequest(
+      client.put(
+        Uri.parse('${ApiConstants.baseUrl}/catalog/lots/$id/publish'),
+        headers: ApiConstants.jsonHeaders,
+      ),
+    );
+    if (!response.isSuccessful) throw response.error;
+    return _lot(response.json as Map<String, dynamic>);
+  }
 }
