@@ -30,6 +30,48 @@ flutter run -d chrome --web-port 5173 --dart-define=API_BASE_URL=http://localhos
 
 Con el backend local se usan las cuentas de personal de desarrollo (`CATALOG_ADMIN`, `FINANCE_ADMIN` y `FIELD_AGENT`) del seed de InmoNode-Backend, y los correos llegan a Mailpit (`http://localhost:8025`).
 
+## Despliegue
+
+Ambas versiones consumen los Web Services de Render. Antes de cada entrega se incrementa `version` en `pubspec.yaml`: el número tras `+` es el `versionCode` de Android y debe crecer en cada APK distribuido.
+
+### Web: Vercel
+
+La versión web se publica en **https://inmonode-swart.vercel.app** (proyecto `inmonode` de Vercel) como sitio estático:
+
+```bash
+flutter build web --release
+npx vercel deploy build/web --prod
+```
+
+La primera vez, `npx vercel login` inicia la sesión y el deploy pide vincular `build/web` al proyecto `inmonode`. `web/vercel.json` se copia a `build/web` al compilar y sirve `index.html` en cualquier ruta que no sea un archivo, para que los enlaces de los correos (`/verify-email` y `/reset-password`) abran la app.
+
+En Render, el backend reconoce esta URL con tres variables:
+
+| Variable | Valor |
+|---|---|
+| `CORS_ALLOWED_ORIGINS` | `http://localhost:5173,https://inmonode-swart.vercel.app` |
+| `VERIFICATION_URL` | `https://inmonode-swart.vercel.app/verify-email` |
+| `PASSWORD_RESET_URL` | `https://inmonode-swart.vercel.app/reset-password` |
+
+### Android: Firebase App Distribution
+
+El APK se distribuye a los testers del grupo `novacorp` del proyecto de Firebase `inmonode`, donde la app Android `com.novacorp.inmonode` tiene el App ID `1:721087478769:android:b12b747c7f92cc97406250`. Los testers se agregan al grupo desde la consola de Firebase.
+
+El APK de release se firma con el upload keystore del equipo. `android/key.properties` indica dónde está y sus contraseñas; ni ese archivo ni el keystore se suben al repositorio, y se comparten por un canal privado. Sin `key.properties`, el APK de release se firma con la clave debug de cada máquina y no puede actualizar uno ya distribuido.
+
+```properties
+storePassword=<contraseña>
+keyPassword=<contraseña>
+keyAlias=upload
+storeFile=C:/ruta/al/upload-keystore.jks
+```
+
+```bash
+flutter build apk --release
+npx firebase-tools login
+npx firebase-tools appdistribution:distribute build/app/outputs/flutter-apk/app-release.apk --project inmonode --app 1:721087478769:android:b12b747c7f92cc97406250 --groups novacorp --release-notes "<cambios de la versión>"
+```
+
 ## Arquitectura
 
 Cada bounded context presente en la aplicación se organiza como un feature dentro de `lib/features/`, con cuatro capas:
