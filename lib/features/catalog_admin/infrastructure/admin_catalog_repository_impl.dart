@@ -17,6 +17,14 @@ class AdminCatalogRepositoryImpl implements AdminCatalogRepository {
     (data['stages'] as List<dynamic>).cast<String>(),
   );
 
+  AdminLot _lot(Map<String, dynamic> data) => AdminLot(
+    (data['id'] as num).toInt(),
+    data['code'] as String,
+    data['stageName'] as String,
+    data['status'] as String,
+    (data['price'] as num).toDouble(),
+  );
+
   @override
   Future<AdminProject> createProject(Map<String, dynamic> values) async {
     final response = await guardRequest(
@@ -37,5 +45,35 @@ class AdminCatalogRepositoryImpl implements AdminCatalogRepository {
     );
     if (!response.isSuccessful) throw response.error;
     return _project(response.json as Map<String, dynamic>);
+  }
+
+  @override
+  Future<AdminLot> registerLot(
+    int projectId,
+    Map<String, dynamic> values,
+  ) async {
+    final response = await guardRequest(
+      client.post(
+        Uri.parse('${ApiConstants.baseUrl}/catalog/projects/$projectId/lots'),
+        headers: ApiConstants.jsonHeaders,
+        body: jsonEncode(values),
+      ),
+    );
+    if (!response.isSuccessful) throw response.error;
+    return _lot(response.json as Map<String, dynamic>);
+  }
+
+  @override
+  Future<List<AdminLot>> getLots(int projectId) async {
+    final response = await guardRequest(
+      client.get(
+        Uri.parse('${ApiConstants.baseUrl}/catalog/projects/$projectId/lots'),
+      ),
+    );
+    if (!response.isSuccessful) throw response.error;
+    return [
+      for (final item in response.json as List<dynamic>)
+        _lot(item as Map<String, dynamic>),
+    ];
   }
 }
