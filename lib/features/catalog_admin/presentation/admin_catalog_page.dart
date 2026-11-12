@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:inmonode/core/formatting/formats.dart';
 import 'package:inmonode/core/network/api_exception.dart';
 
 import '../application/catalog_commands.dart';
@@ -26,10 +27,18 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
       'maxTermMonths',
       'lateFeeRate',
       'stages',
+      'code',
+      'area',
+      'front',
+      'depth',
+      'price',
+      'polygon',
     ])
       name: TextEditingController(),
   };
   AdminProject? project;
+  List<AdminLot> lots = [];
+  String? stage;
   String? message;
   bool busy = false;
 
@@ -75,9 +84,12 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
 
   Future<void> _load(int id) async {
     final loaded = await widget.commands.getProject(id);
+    final loadedLots = await widget.commands.getLots(id);
     if (mounted)
       setState(() {
         project = loaded;
+        lots = loadedLots;
+        stage = loaded.stages.firstOrNull;
         inputs['projectId']!.text = '$id';
       });
   }
@@ -117,14 +129,56 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
     if (mounted)
       setState(() {
         project = created;
+        lots = [];
+        stage = created.stages.firstOrNull;
         message = 'Proyecto ${created.id} creado como borrador.';
       });
   });
 
-  Widget _field(String name, String label, {String? hint}) => TextField(
-    controller: inputs[name],
-    decoration: InputDecoration(labelText: label, hintText: hint),
-  );
+  List<List<List<double>>> _polygon() {
+    final points = _value('polygon')
+        .split('\n')
+        .where((line) => line.trim().isNotEmpty)
+        .map((line) {
+          final parts = line.trim().split(',');
+          if (parts.length != 2)
+            throw const FormatException('Se esperan longitud,latitud');
+          return [double.parse(parts[0].trim()), double.parse(parts[1].trim())];
+        })
+        .toList();
+    if (points.length < 3)
+      throw const FormatException('Se requieren tres vértices');
+    if (points.first[0] != points.last[0] ||
+        points.first[1] != points.last[1]) {
+      points.add(List<double>.from(points.first));
+    }
+    return [points];
+  }
+
+  Future<void> _registerLot() => _run(() async {
+    final selected = project;
+    if (selected == null || stage == null || _value('code').isEmpty) {
+      throw ArgumentError('Selecciona un proyecto y completa lote y etapa.');
+    }
+    await widget.commands.registerLot(selected.id, {
+      'code': _value('code'),
+      'stageName': stage,
+      'area': _number('area'),
+      if (_optionalNumber('front') != null) 'front': _number('front'),
+      if (_optionalNumber('depth') != null) 'depth': _number('depth'),
+      'price': _number('price'),
+      'polygon': _polygon(),
+    });
+    await _load(selected.id);
+    if (mounted) setState(() => message = 'Lote registrado como borrador.');
+  });
+
+  Widget _field(String name, String label, {String? hint, int lines = 1}) =>
+      TextField(
+        controller: inputs[name],
+        maxLines: lines,
+        decoration: InputDecoration(labelText: label, hintText: hint),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -180,6 +234,54 @@ class _AdminCatalogPageState extends State<AdminCatalogPage> {
                 Text(
                   '${project!.name} · ${project!.status} · ID ${project!.id}',
                 ),
+              if (project != null) ...[
+                const SizedBox(height: 20),
+                Text('Registrar lote', style: theme.textTheme.titleLarge),
+                _field('code', 'Código del lote *', hint: 'N-01'),
+                DropdownButtonFormField<String>(
+                  key: ValueKey(project!.id),
+                  initialValue: stage,
+                  decoration: const InputDecoration(labelText: 'Etapa *'),
+                  items: [
+                    for (final item in project!.stages)
+                      DropdownMenuItem(value: item, child: Text(item)),
+                  ],
+                  onChanged: busy
+                      ? null
+                      : (value) => setState(() => stage = value),
+                ),
+                _field('area', 'Área (m²) *'),
+                _field('front', 'Frente (m), si aplica'),
+                _field('depth', 'Fondo (m), si aplica'),
+                _field('price', 'Precio (S/) *'),
+                _field(
+                  'polygon',
+                  'Polígono: longitud,latitud por línea *',
+                  hint:
+                      '-77.0428,-12.0464\n-77.0427,-12.0464\n-77.0427,-12.0465',
+                  lines: 5,
+                ),
+                const Text(
+                  'Ingresa al menos tres vértices; la app cerrará el polígono.',
+                ),
+                const SizedBox(height: 12),
+                FilledButton(
+                  onPressed: busy ? null : _registerLot,
+                  child: const Text('Registrar lote borrador'),
+                ),
+                const SizedBox(height: 20),
+                Text('Lotes', style: theme.textTheme.titleLarge),
+                if (lots.isEmpty) const Text('Aún no hay lotes registrados.'),
+                for (final item in lots)
+                  Card(
+                    child: ListTile(
+                      title: Text('${item.code} · ${item.stageName}'),
+                      subtitle: Text(
+                        '${item.status} · ${Formats.money(item.price)}',
+                      ),
+                    ),
+                  ),
+              ],
             ],
           ),
         ),

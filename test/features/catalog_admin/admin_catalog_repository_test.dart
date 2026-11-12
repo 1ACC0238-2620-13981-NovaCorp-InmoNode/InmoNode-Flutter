@@ -51,4 +51,52 @@ void main() {
     ]);
     expect(result.status, 'DRAFT');
   });
+
+  test('US-52 registers a draft lot and lists it', () async {
+    final calls = <http.Request>[];
+    final client = AuthorizedClient(
+      tokenProvider: _Tokens(),
+      inner: MockClient((request) async {
+        calls.add(request);
+        final lot = {
+          'id': 9,
+          'code': 'N-01',
+          'stageName': 'Norte',
+          'status': 'DRAFT',
+          'price': 45000,
+        };
+        return http.Response(
+          jsonEncode(request.method == 'POST' ? lot : [lot]),
+          request.method == 'POST' ? 201 : 200,
+        );
+      }),
+    );
+    final repo = AdminCatalogRepositoryImpl(client);
+    final polygon = [
+      [
+        [-77.0, -12.0],
+        [-77.1, -12.0],
+        [-77.1, -12.1],
+        [-77.0, -12.0],
+      ],
+    ];
+    final created = await repo.registerLot(5, {
+      'code': 'N-01',
+      'stageName': 'Norte',
+      'area': 120,
+      'price': 45000,
+      'polygon': polygon,
+    });
+    final listed = await repo.getLots(5);
+    expect(created.status, 'DRAFT');
+    expect(listed.single.id, 9);
+    expect(calls.map((r) => '${r.method} ${r.url.path}').toList(), [
+      'POST /api/v1/catalog/projects/5/lots',
+      'GET /api/v1/catalog/projects/5/lots',
+    ]);
+    expect(
+      (jsonDecode(calls.first.body) as Map<String, dynamic>)['polygon'],
+      polygon,
+    );
+  });
 }
