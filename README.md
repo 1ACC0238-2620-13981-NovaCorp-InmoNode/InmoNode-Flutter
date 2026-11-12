@@ -104,6 +104,8 @@ Dependencias entre historias:
 - **US-51, US-52 y US-53 se integran en ese orden.** Un lote se registra dentro de un proyecto, y solo se publica un lote registrado.
 - **Las cuentas `CATALOG_ADMIN` no se crean desde la aplicación.** Las provee el backend: en desarrollo con los usuarios semilla y en Render con las variables `STAFF_CATALOG_ADMIN_*`.
 
+En **Catálogo**, `CATALOG_ADMIN` crea un proyecto con sus etapas y reglas de financiamiento, registra cada lote como borrador con un polígono WGS84 (un vértice `longitud,latitud` por línea), publica el proyecto y luego publica sus lotes. El backend no ofrece un listado de proyectos borrador: conserva el ID mostrado para cargar uno existente.
+
 ## Features
 
 ### Comprador e Inversionista (rol `BUYER`)
